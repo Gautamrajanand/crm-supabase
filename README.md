@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CRM System with Next.js and Supabase
+
+A modern CRM (Customer Relationship Management) system built with Next.js 14, Supabase, and Tailwind CSS. Features include customer management, calendar scheduling, analytics, and team collaboration.
+
+## Features
+
+- 🔐 **Authentication** - Secure login with Supabase Auth
+- 👥 **Customer Management** - Track and manage customer information
+- 📅 **Calendar Integration** - Schedule and manage appointments with FullCalendar
+- 📊 **Analytics Dashboard** - Visual insights with Recharts
+- 👥 **Team Management** - Manage team members and roles
+- 📋 **Project Tracking** - Monitor project status and progress
+- 🎯 **Task Management** - Assign and track tasks
+
+## Tech Stack
+
+- **Frontend**: Next.js 14 (App Router)
+- **Authentication**: Supabase Auth
+- **Database**: Supabase (PostgreSQL)
+- **Styling**: Tailwind CSS
+- **Charts**: Recharts
+- **Calendar**: FullCalendar
+- **Icons**: Heroicons
 
 ## Getting Started
 
-First, run the development server:
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Gautamrajanand/crm-supabase.git
+   cd crm-supabase
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Environment Setup**
+   - Create a `.env.local` file in the root directory
+   - Add your Supabase credentials:
+     ```
+     NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+     NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+     ```
+
+4. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open the application**
+   - Navigate to [http://localhost:3000](http://localhost:3000)
+   - Use the demo credentials to log in:
+     - Email: demo@example.com
+     - Password: demo123
+
+## Project Structure
+
+```
+crm-supabase/
+├── app/                    # Next.js app directory
+│   ├── dashboard/         # Dashboard pages
+│   ├── login/            # Authentication pages
+│   └── layout.tsx        # Root layout
+├── components/            # React components
+│   ├── auth/             # Authentication components
+│   ├── customers/        # Customer management
+│   └── layout/           # Layout components
+├── utils/                # Utility functions
+├── lib/                  # Library code
+└── supabase/            # Database migrations
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Database Schema
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The application uses the following main tables in Supabase:
+- `users` - User accounts and profiles
+- `customers` - Customer information
+- `projects` - Project details
+- `tasks` - Task management
+- `events` - Calendar events
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Contributing
 
-## Learn More
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-To learn more about Next.js, take a look at the following resources:
+## License
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This project is open source and available under the MIT License.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Support
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For support, email your questions or open an issue in the GitHub repository.
