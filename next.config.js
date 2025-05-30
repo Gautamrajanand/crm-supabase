@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  swcMinify: true,
-  typescript: {
-    ignoreBuildErrors: true,
+  output: 'standalone',
+  images: {
+    domains: [],
+    formats: ['image/avif', 'image/webp'],
+    remotePatterns: [],
   },
 }
 

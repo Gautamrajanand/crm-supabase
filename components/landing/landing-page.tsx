@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
 
 const LandingPageContent = dynamic(
-  () => import('./landing-page-content').then(mod => mod.default),
+  () => import('./landing-page-content'),
   {
     loading: () => (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4">
@@ -13,8 +13,7 @@ const LandingPageContent = dynamic(
           <p className="text-gray-400">Loading landing page...</p>
         </div>
       </div>
-    ),
-    ssr: false
+    )
   }
 )
 

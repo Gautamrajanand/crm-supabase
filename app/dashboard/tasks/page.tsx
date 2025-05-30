@@ -1,517 +1,239 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Dialog } from '@headlessui/react'
-import { supabase, type Task, type Project, type TeamMember } from '@/utils/supabase'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { useCurrentStream } from '@/hooks/use-current-stream'
+import { CheckIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline'
+import { format } from 'date-fns'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { CreateTaskButton } from '@/components/tasks/create-task-button'
+import { EditTaskDialog } from '@/components/tasks/edit-task-dialog'
+import { TaskStats } from '@/components/tasks/task-stats'
+import { Database } from '@/types/database'
+import { Spinner } from '@/components/ui/spinner'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+
+export type Task = Database['public']['Tables']['tasks']['Row']
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    status: 'Todo' as const,
-    project_id: '',
-    assigned_to: '',
-    due_date: '',
-    priority: 'Medium' as const,
-  })
+  const [loading, setLoading] = useState(true)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const supabase = createClientComponentClient<Database>()
+  const router = useRouter()
+  const { stream, streamId, loading: streamLoading } = useCurrentStream()
 
   useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
-    try {
-      // Fetch tasks with project names
-      const { data: tasksData, error: tasksError } = await supabase
-        .from('tasks')
-        .select('*, projects(name)')
-        .order('created_at', { ascending: false })
-
-      if (tasksError) throw tasksError
-
-      // Fetch projects
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select('*')
-        .not('status', 'eq', 'Completed')
-
-      if (projectsError) throw projectsError
-
-      // Fetch team members
-      const { data: teamData, error: teamError } = await supabase
-        .from('team_members')
-        .select('*')
-
-      if (teamError) throw teamError
-
-      setTasks(tasksData || [])
-      setProjects(projectsData || [])
-      setTeamMembers(teamData || [])
-    } catch (error: any) {
-      setError(error.message)
-    } finally {
-      setIsLoading(false)
+    if (!streamId || streamLoading) {
+      return
     }
-  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
+    fetchTasks()
 
+    // Clear tasks when unmounting or switching streams
+    return () => {
+      setTasks([])
+      setLoading(true)
+    }
+  }, [streamId, streamLoading, router, supabase])
+
+  async function fetchTasks() {
     try {
-      if (selectedTask?.id) {
-        const { error } = await supabase
-          .from('tasks')
-          .update(formData)
-          .eq('id', selectedTask.id)
-
-        if (error) throw error
-      } else {
-        const { error } = await supabase.from('tasks').insert([formData])
-
-        if (error) throw error
+      if (!streamId) {
+        return
       }
 
-      setIsFormOpen(false)
-      fetchData()
-    } catch (error: any) {
-      setError(error.message)
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('stream_id', streamId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setTasks(data || [])
+    } catch (error) {
+      console.error('Error fetching tasks:', error)
+      toast.error('Failed to load tasks')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this task?')) return
-
+  async function toggleTaskCompletion(taskId: string, completed: boolean) {
     try {
-      const { error } = await supabase.from('tasks').delete().eq('id', id)
+      const { error } = await supabase
+        .from('tasks')
+        .update({ completed: !completed })
+        .eq('id', taskId)
 
       if (error) throw error
 
-      setTasks((prev) => prev.filter((task) => task.id !== id))
-    } catch (error: any) {
-      setError(error.message)
+      setTasks(tasks.map(task => 
+        task.id === taskId ? { ...task, completed: !completed } : task
+      ))
+
+      toast.success(completed ? 'Task uncompleted' : 'Task completed')
+    } catch (error) {
+      console.error('Error updating task:', error)
+      toast.error('Failed to update task')
     }
   }
 
-  const openForm = (task?: Task) => {
-    if (task) {
-      setFormData({
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        project_id: task.project_id || '',
-        assigned_to: task.assigned_to || '',
-        due_date: task.due_date || '',
-        priority: task.priority,
-      })
-      setSelectedTask(task)
-    } else {
-      setFormData({
-        title: '',
-        description: '',
-        status: 'Todo',
-        project_id: '',
-        assigned_to: '',
-        due_date: '',
-        priority: 'Medium',
-      })
-      setSelectedTask(null)
-    }
-    setIsFormOpen(true)
-  }
+  async function handleDeleteTask(taskId: string) {
+    if (!confirm('Are you sure you want to delete this task?')) return
 
-  const getStatusColor = (status: Task['status']) => {
-    switch (status) {
-      case 'Done':
-        return 'bg-green-100 text-green-800'
-      case 'In Progress':
-        return 'bg-yellow-100 text-yellow-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId)
+
+      if (error) throw error
+
+      setTasks(tasks.filter(task => task.id !== taskId))
+      toast.success('Task deleted successfully')
+    } catch (error) {
+      console.error('Error deleting task:', error)
+      toast.error('Failed to delete task')
     }
   }
 
-  const getPriorityColor = (priority: Task['priority']) => {
+  function getPriorityColor(priority: string) {
     switch (priority) {
-      case 'High':
-        return 'bg-red-100 text-red-800'
-      case 'Medium':
-        return 'bg-yellow-100 text-yellow-800'
+      case 'high':
+        return 'bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-400/30'
+      case 'medium':
+        return 'bg-yellow-50 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 ring-yellow-600/20 dark:ring-yellow-400/30'
+      case 'low':
+        return 'bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-400 ring-green-600/20 dark:ring-green-400/30'
       default:
-        return 'bg-green-100 text-green-800'
+        return 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-400 ring-gray-600/20 dark:ring-gray-400/30'
     }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-gray-600">Loading...</div>
-      </div>
-    )
   }
 
   return (
-    <>
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <h1 className="text-xl font-semibold text-gray-900">Tasks</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            A list of all tasks including their status, priority, and assignee.
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold">Tasks</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your tasks and track their progress
           </p>
         </div>
-        <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-          <button
-            type="button"
-            onClick={() => openForm()}
-            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-          >
-            Add task
-          </button>
-        </div>
+        <CreateTaskButton onTaskCreated={(task) => setTasks([task, ...tasks])} />
       </div>
 
-      {error && (
-        <div className="mt-4 rounded-md bg-red-50 p-4">
-          <div className="flex">
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">{error}</h3>
+      <TaskStats tasks={tasks} />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Task List</CardTitle>
+          <CardDescription>
+            View and manage your tasks
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <Spinner size="lg" />
             </div>
-          </div>
-        </div>
-      )}
-
-      <div className="mt-8 flow-root">
-        <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-          <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-            <table className="min-w-full divide-y divide-gray-300">
-              <thead>
-                <tr>
-                  <th
-                    scope="col"
-                    className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0"
-                  >
-                    Title
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                  >
-                    Project
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                  >
-                    Status
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                  >
-                    Priority
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                  >
-                    Due Date
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                  >
-                    Assigned To
-                  </th>
-                  <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-0">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {tasks.map((task) => (
-                  <tr key={task.id}>
-                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
-                      {task.title}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      {task.projects?.name || '-'}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      <span
-                        className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(
-                          task.status
-                        )}`}
-                      >
-                        {task.status}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      <span
-                        className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getPriorityColor(
-                          task.priority
-                        )}`}
-                      >
-                        {task.priority}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      {task.due_date
-                        ? new Date(task.due_date).toLocaleDateString()
-                        : '-'}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      {task.assigned_to ? (
-                        <div className="flex items-center">
-                          {(() => {
-                            const member = teamMembers.find(
-                              (m) => m.id === task.assigned_to
-                            )
-                            return (
-                              <>
-                                <img
-                                  className="h-6 w-6 rounded-full mr-2"
-                                  src={
-                                    member?.avatar_url ||
-                                    `https://ui-avatars.com/api/?name=${
-                                      member?.full_name || 'User'
-                                    }`
-                                  }
-                                  alt=""
-                                />
-                                <span>{member?.full_name}</span>
-                              </>
-                            )
-                          })()}
+          ) : (
+            <div className="rounded-md border">
+              <ul role="list" className="divide-y">
+                {tasks.length === 0 ? (
+                  <li className="text-center py-4">
+                    <p className="text-sm text-muted-foreground">No tasks yet. Create one to get started!</p>
+                  </li>
+                ) : (
+                  tasks.map((task) => (
+                    <li key={task.id} className="relative flex items-center space-x-4 px-4 py-4 hover:bg-accent/50 sm:px-6">
+                      <div className="min-w-0 flex-auto">
+                        <div className="flex items-center gap-x-3">
+                          <button
+                            onClick={() => toggleTaskCompletion(task.id, task.completed)}
+                            className={`h-6 w-6 flex-none rounded-full ${
+                              task.completed
+                                ? 'bg-primary text-primary-foreground'
+                                : 'border-2 border-input hover:border-primary'
+                            }`}
+                          >
+                            {task.completed && <CheckIcon className="h-4 w-4 m-auto" />}
+                          </button>
+                          <h2 className={`min-w-0 text-sm font-semibold ${
+                            task.completed ? 'line-through text-muted-foreground' : ''
+                          }`}>
+                            {task.title}
+                          </h2>
+                          <Badge variant="outline" className={getPriorityColor(task.priority)}>
+                            {task.priority}
+                          </Badge>
                         </div>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                    <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
-                      <button
-                        onClick={() => openForm(task)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(task.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+                        {task.description && (
+                          <div className="mt-1 truncate text-sm text-muted-foreground">
+                            {task.description}
+                          </div>
+                        )}
+                        {task.due_date && (
+                          <div className="mt-1 text-sm text-muted-foreground">
+                            Due: {format(new Date(task.due_date), 'MMM d, yyyy')}
+                          </div>
+                        )}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="flex-none">
+                            <EllipsisVerticalIcon className="h-5 w-5" />
+                            <span className="sr-only">Open task menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditingTask(task)}>
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDeleteTask(task.id)}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      <Dialog
-        open={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        className="relative z-50"
-      >
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto max-w-lg rounded-lg bg-white p-6">
-            <Dialog.Title className="text-lg font-medium leading-6 text-gray-900 mb-4">
-              {selectedTask ? 'Edit Task' : 'Add Task'}
-            </Dialog.Title>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="title"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Title
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, title: e.target.value }))
-                  }
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="description"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  rows={3}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="project"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Project
-                </label>
-                <select
-                  id="project"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  value={formData.project_id}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      project_id: e.target.value,
-                    }))
-                  }
-                >
-                  <option value="">No Project</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="status"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Status
-                </label>
-                <select
-                  id="status"
-                  required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      status: e.target.value as Task['status'],
-                    }))
-                  }
-                >
-                  <option value="Todo">Todo</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Done">Done</option>
-                </select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="priority"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Priority
-                </label>
-                <select
-                  id="priority"
-                  required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  value={formData.priority}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      priority: e.target.value as Task['priority'],
-                    }))
-                  }
-                >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                </select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="assigned_to"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Assigned To
-                </label>
-                <select
-                  id="assigned_to"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  value={formData.assigned_to}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      assigned_to: e.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Unassigned</option>
-                  {teamMembers.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.full_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="due_date"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Due Date
-                </label>
-                <input
-                  type="date"
-                  id="due_date"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  value={formData.due_date}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      due_date: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
-                <button
-                  type="submit"
-                  className="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:col-start-2"
-                >
-                  {selectedTask ? 'Save Changes' : 'Create Task'}
-                </button>
-                <button
-                  type="button"
-                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
-                  onClick={() => setIsFormOpen(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </Dialog.Panel>
-        </div>
-      </Dialog>
-    </>
+      {editingTask && (
+        <EditTaskDialog
+          task={editingTask}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setEditingTask(null)
+          }}
+          onTaskUpdated={(updatedTask) => {
+            setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task))
+          }}
+        />
+      )}
+    </div>
   )
 }

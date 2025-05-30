@@ -1,15 +1,21 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
+import { Providers } from './providers'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-plus-jakarta',
+})
+
 export const metadata: Metadata = {
-  title: {
-    template: '%s | CRM System',
-    default: 'CRM System',
+  title: 'CRM',
+  description: 'CRM built with Next.js and Supabase',
+  icons: {
+    icon: '/favicon.svg',
   },
-  description: 'Internal CRM system built with Next.js and Supabase',
 }
 
 export default function RootLayout({
@@ -18,11 +24,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="h-full bg-gray-50">
-      <head>
-        <link rel="icon" href="/favicon.ico" />
-      </head>
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className="h-full">
+      <body className={`${inter.className} ${plusJakarta.variable} h-full bg-gray-50 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-150`}>
+        <Providers>
+          {children}
+        </Providers>
+      </body>
     </html>
   )
 }

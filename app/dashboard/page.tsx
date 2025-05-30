@@ -1,96 +1,128 @@
-import { Metadata } from 'next'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
+'use client'
 
-export const metadata: Metadata = {
-  title: 'Dashboard',
-  description: 'CRM Dashboard Overview',
+import { useEffect, useState } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter } from 'next/navigation'
+import { DashboardStats } from '@/components/dashboard/dashboard-stats'
+import { DealsByStage } from '@/components/dashboard/deals-by-stage'
+import { RecentActivity } from '@/components/dashboard/recent-activity'
+import { PerformanceMetrics } from '@/components/dashboard/performance-metrics'
+import { useCurrentStream } from '@/hooks/use-current-stream'
+import { Database } from '@/types/database'
+
+type Deal = Database['public']['Tables']['deals']['Row'] & {
+  customers: {
+    id: string
+    name: string
+    company: string | null
+    email: string | null
+  } | null
+  stage: 'lead' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost'
 }
 
-export default async function DashboardPage() {
-  const cookieStore = cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-      },
+export default function DashboardPage() {
+  const [deals, setDeals] = useState<Deal[]>([])
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const supabase = createClientComponentClient<Database>()
+  const { stream, streamId, loading: streamLoading } = useCurrentStream()
+
+  useEffect(() => {
+    if (!streamId || streamLoading) {
+      return
     }
-  )
 
-  const { data: { session } } = await supabase.auth.getSession()
+    async function fetchDeals() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.push('/login')
+          return
+        }
 
-  if (!session) {
-    redirect('/login')
+        const { data, error } = await supabase
+          .from('deals')
+          .select(`
+            *,
+            customers!inner (id, name, company, email)
+          `)
+          .eq('stream_id', streamId)
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+        setDeals(data || [])
+      } catch (error) {
+        console.error('Error:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    setLoading(true)
+    fetchDeals()
+
+    // Subscribe to real-time changes
+    const subscription = supabase
+      .channel('deals_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'deals',
+          filter: `stream_id=eq.${streamId}`
+        },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const { data } = await supabase
+              .from('deals')
+              .select('*, customers!inner (id, name, company, email)')
+              .eq('id', payload.new.id)
+              .single()
+            if (data) setDeals(prev => [data, ...prev])
+          } else if (payload.eventType === 'DELETE') {
+            setDeals(prev => prev.filter(d => d.id !== payload.old.id))
+          } else if (payload.eventType === 'UPDATE') {
+            const { data } = await supabase
+              .from('deals')
+              .select('*, customers!inner (id, name, company, email)')
+              .eq('id', payload.new.id)
+              .single()
+            if (data) setDeals(prev => prev.map(d => d.id === data.id ? data : d))
+          }
+        }
+      )
+      .subscribe()
+
+    // Clear deals and unsubscribe when switching streams
+    return () => {
+      setDeals([])
+      setLoading(true)
+      subscription.unsubscribe()
+    }
+  }, [streamId, streamLoading, router, supabase])
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="py-6">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-      </div>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
-        <div className="py-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Total Customers</dt>
-                      <dd className="text-lg font-medium text-gray-900">0</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Dashboard</h1>
+      
+      <DashboardStats deals={deals} />
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Active Projects</dt>
-                      <dd className="text-lg font-medium text-gray-900">0</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
+      <PerformanceMetrics deals={deals} />
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Pending Tasks</dt>
-                      <dd className="text-lg font-medium text-gray-900">0</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DealsByStage deals={deals} />
+        <RecentActivity deals={deals} />
       </div>
     </div>
   )
