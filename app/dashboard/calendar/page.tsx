@@ -680,7 +680,7 @@ export default function CalendarPage() {
             title: event.title,
             start: event.start_time,
             end: event.end_time,
-            allDay: event.all_day,
+            allDay: event.all_day ?? undefined,
             className: `${event.event_type ? colorMap[event.event_type] : colorMap.meeting} shadow-sm rounded-md`,
           }))}
           eventClick={(info: any) => {
