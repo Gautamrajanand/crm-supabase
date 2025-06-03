@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect, FormEvent, FC, createElement } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns'
 import { toast } from 'sonner'
@@ -433,7 +433,7 @@ function ContributionsPage() {
                       )}
                     >
                       <div className="rounded-full border p-2">
-                        {getContributionIcon(contribution.contribution_type)}
+                        {createElement(getContributionIcon(contribution.contribution_type))}
                       </div>
                       <div className="flex-1">
                         <p className="text-sm">
