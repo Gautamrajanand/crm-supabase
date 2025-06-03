@@ -10,14 +10,27 @@ import { PerformanceMetrics } from '@/components/dashboard/performance-metrics'
 import { useCurrentStream } from '@/hooks/use-current-stream'
 import { Database } from '@/types/database'
 
-type Deal = Database['public']['Tables']['deals']['Row'] & {
+type DealStage = 'lead' | 'proposal' | 'negotiation' | 'closed_won'
+
+type Deal = {
+  id: string
+  title: string
+  description: string | null
+  value: number
+  stage: DealStage
+  customer_id: string
+  stream_id: string
+  user_id: string
+  notes: string | null
+  expected_close_date: string | null
+  created_at: string
+  updated_at: string
   customers: {
     id: string
     name: string
     company: string | null
     email: string | null
   } | null
-  stage: 'lead' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost'
 }
 
 export default function DashboardPage() {
@@ -46,11 +59,14 @@ export default function DashboardPage() {
             *,
             customers!inner (id, name, company, email)
           `)
-          .eq('stream_id', streamId)
+          .eq('stream_id', streamId || '')
           .order('created_at', { ascending: false })
 
         if (error) throw error
-        setDeals(data || [])
+        setDeals(data?.map(deal => ({
+        ...deal,
+        stage: (deal.stage || 'lead') as DealStage
+      })) || [])
       } catch (error) {
         console.error('Error:', error)
       } finally {
@@ -79,7 +95,7 @@ export default function DashboardPage() {
               .select('*, customers!inner (id, name, company, email)')
               .eq('id', payload.new.id)
               .single()
-            if (data) setDeals(prev => [data, ...prev])
+            if (data) setDeals(prev => [{ ...data, stage: (data.stage || 'lead') as DealStage }, ...prev])
           } else if (payload.eventType === 'DELETE') {
             setDeals(prev => prev.filter(d => d.id !== payload.old.id))
           } else if (payload.eventType === 'UPDATE') {
@@ -88,7 +104,7 @@ export default function DashboardPage() {
               .select('*, customers!inner (id, name, company, email)')
               .eq('id', payload.new.id)
               .single()
-            if (data) setDeals(prev => prev.map(d => d.id === data.id ? data : d))
+            if (data) setDeals(prev => prev.map(d => d.id === data.id ? { ...data, stage: (data.stage || 'lead') as DealStage } : d))
           }
         }
       )
