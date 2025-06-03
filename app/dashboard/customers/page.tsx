@@ -64,7 +64,7 @@ export default function CustomersPage() {
           .from('deals')
           .select('customer_id, value')
           .eq('stage', 'closed_won')
-          .eq('stream_id', streamId)
+          .eq('stream_id', streamId || '')
 
         // Get unique customer IDs from closed won deals
         const customerIds = [...new Set(closedWonDeals?.filter(deal => deal.customer_id).map(deal => deal.customer_id as string) || [])]
