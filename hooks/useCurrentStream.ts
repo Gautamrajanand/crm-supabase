@@ -12,76 +12,57 @@ export function useCurrentStream() {
   const searchParams = useSearchParams()
   const [stream, setStream] = useState<Stream | null>(null)
   const [loading, setLoading] = useState(true)
-
   const urlStreamId = searchParams.get('stream')
-  const [streamId, setStreamId] = useState(urlStreamId || '')
 
   useEffect(() => {
     const loadStream = async () => {
       try {
         setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          setLoading(false)
-          return
-        }
+        if (!user) return
 
-        // If no stream ID in URL, get user's default stream
-        if (!urlStreamId) {
-          const { data: streams, error: streamsError } = await supabase
-            .from('revenue_streams')
-            .select('id, name')
-            .order('created_at', { ascending: true })
-            .limit(1)
-
-          if (streamsError) throw streamsError
-
-          if (streams && streams.length > 0) {
-            setStreamId(streams[0].id)
-          } else {
-            // Create a default stream if none exists
-            const { data: newStream, error: createError } = await supabase
-              .from('revenue_streams')
-              .insert([{ 
-                name: 'Default Stream',
-                created_by: user.id
-              }])
-              .select()
-              .single()
-
-            if (createError) throw createError
-
-            if (newStream) {
-              // Add user as owner of the new stream
-              const { error: memberError } = await supabase
-                .from('revenue_stream_members')
-                .insert([{
-                  stream_id: newStream.id,
-                  user_id: user.id,
-                  role: 'owner',
-                  can_edit: true
-                }])
-
-              if (memberError) throw memberError
-              setStreamId(newStream.id)
-            }
-          }
-        }
-
-        // Now get the stream data
-        if (streamId) {
+        // If we have a stream ID, try to load it
+        if (urlStreamId) {
           const { data: streamData, error } = await supabase
             .from('revenue_streams')
             .select('*')
-            .eq('id', streamId)
+            .eq('id', urlStreamId)
             .single()
 
-          if (error) throw error
-          setStream(streamData)
+          if (!error && streamData) {
+            setStream(streamData)
+            localStorage.setItem('currentStreamId', streamData.id)
+            return
+          }
+        }
+
+        // Try stored stream ID
+        const storedId = localStorage.getItem('currentStreamId')
+        if (storedId) {
+          const { data: streamData, error } = await supabase
+            .from('revenue_streams')
+            .select('*')
+            .eq('id', storedId)
+            .single()
+
+          if (!error && streamData) {
+            setStream(streamData)
+            return
+          }
+        }
+
+        // Fall back to first stream
+        const { data: streams, error } = await supabase
+          .from('revenue_streams')
+          .select('*')
+          .order('created_at', { ascending: true })
+
+        if (!error && streams?.length > 0) {
+          setStream(streams[0])
+          localStorage.setItem('currentStreamId', streams[0].id)
         }
       } catch (error) {
         console.error('Error loading stream:', error)
-        setStream(null)
       } finally {
         setLoading(false)
       }
@@ -89,21 +70,30 @@ export function useCurrentStream() {
 
     loadStream()
 
-    // Listen for stream change events
     const handleStreamChange = (e: CustomEvent) => {
       const newStreamId = e.detail
-      if (newStreamId !== streamId) {
-        setStreamId(newStreamId)
+      if (newStreamId) {
+        localStorage.setItem('currentStreamId', newStreamId)
+        supabase
+          .from('revenue_streams')
+          .select('*')
+          .eq('id', newStreamId)
+          .single()
+          .then(({ data }) => {
+            if (data) setStream(data)
+          })
       }
     }
 
     window.addEventListener(STREAM_CHANGE_EVENT, handleStreamChange as EventListener)
     return () => {
       window.removeEventListener(STREAM_CHANGE_EVENT, handleStreamChange as EventListener)
-      setStream(null)
-      setLoading(true)
     }
-  }, [streamId, urlStreamId])
+  }, [urlStreamId])
 
-  return { stream, streamId, loading }
+  return { 
+    stream,
+    streamId: stream?.id || '',
+    loading 
+  }
 }

@@ -49,13 +49,20 @@ export function CreateCustomerButton() {
 
       if (error) throw error
 
+      toast.success('Customer created successfully')
       setIsOpen(false)
       setName('')
       setEmail('')
       setCompany('')
       setStatus('lead')
       setNotes('')
-      router.refresh()
+      
+      // Add a small delay then refresh while preserving the stream
+      setTimeout(() => {
+        const currentUrl = new URL(window.location.href)
+        currentUrl.searchParams.set('stream', currentStreamId)
+        window.location.href = currentUrl.toString()
+      }, 100)
     } catch (error) {
       console.error('Error creating customer:', error)
     } finally {

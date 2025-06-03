@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { useRouter } from 'next/navigation'
-import { PlusCircle, ChevronDown, Pencil, Trash2, Share2 } from 'lucide-react'
-import { ShareDialog } from './share-dialog'
+import { useRouter, usePathname } from 'next/navigation'
+import { PlusCircle, ChevronDown, Pencil, Trash2 } from 'lucide-react'
 import { EditStreamDialog } from './edit-stream-dialog'
 import { toast } from 'sonner'
 import { STREAM_CHANGE_EVENT } from '@/hooks/use-current-stream'
@@ -46,17 +45,53 @@ export default function RevenueSwitcher() {
   const [newStreamName, setNewStreamName] = useState('')
   const [newStreamDesc, setNewStreamDesc] = useState('')
   const [loading, setLoading] = useState(true)
-  const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = createClientComponentClient()
 
   useEffect(() => {
-    console.log('Initial load of streams')
-    loadStreams()
+    const loadInitialStream = async () => {
+      try {
+        setLoading(true)
+        const { data: streams, error } = await supabase
+          .from('revenue_streams')
+          .select('*')
+          .order('created_at', { ascending: true })
 
-    // Listen for stream name changes
+        if (error) {
+          console.error('Error loading streams:', error)
+          toast.error('Failed to load revenue streams')
+          return
+        }
+
+        setStreams(streams || [])
+
+        // Try to get current stream from URL or localStorage
+        const params = new URLSearchParams(window.location.search)
+        const urlStreamId = params.get('stream')
+        const storedStreamId = localStorage.getItem('currentStreamId')
+
+        if (streams?.length) {
+          const targetStream = streams.find(s => s.id === urlStreamId) || 
+                             streams.find(s => s.id === storedStreamId) || 
+                             streams[0]
+          setCurrentStream(targetStream)
+          localStorage.setItem('currentStreamId', targetStream.id)
+        }
+      } catch (error) {
+        console.error('Error loading streams:', error)
+        toast.error('Failed to load revenue streams')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadInitialStream()
+  }, [])
+
+  useEffect(() => {
     const handleStreamNameChange = () => {
       console.log('Stream name changed, reloading streams')
       loadStreams()
@@ -65,51 +100,64 @@ export default function RevenueSwitcher() {
     window.addEventListener('stream-name-changed', handleStreamNameChange)
     return () => {
       window.removeEventListener('stream-name-changed', handleStreamNameChange)
+      setStreams([])
+      setCurrentStream(null)
+      setLoading(true)
     }
-  }, [])
-
-  // Always select a stream if none is selected and streams are loaded
-  useEffect(() => {
-    if (streams.length > 0) {
-      if (!currentStream) {
-        console.log('Selecting first stream:', streams[0].name)
-        switchStream(streams[0])
-      }
-    } else {
-      // No streams available
-      switchStream(null)
-    }
-  }, [streams])
+  }, [router.asPath])
 
   const loadStreams = async () => {
     try {
-      // First get the current user's ID
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      // Get all streams where user is a member
+      setLoading(true)
       const { data: streams, error } = await supabase
         .from('revenue_streams')
         .select('*')
-        .order('created_at')
+        .order('created_at', { ascending: true })
 
       if (error) throw error
 
-      console.log('Loaded streams:', streams)
       setStreams(streams || [])
-      
-      // Set current stream from localStorage or use first stream
-      const savedStreamId = localStorage.getItem('currentStreamId')
-      const currentStream = streams?.find(s => s.id === savedStreamId) || streams?.[0]
-      if (currentStream) {
-        console.log('Setting current stream:', currentStream.name)
-        setCurrentStream(currentStream)
-        localStorage.setItem('currentStreamId', currentStream.id)
-        document.cookie = `currentStreamId=${currentStream.id};path=/`
+
+      // Get stream ID from URL or localStorage
+      const params = new URLSearchParams(window.location.search)
+      const urlStreamId = params.get('stream')
+      const storedStreamId = localStorage.getItem('currentStreamId')
+      const cookieStreamId = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('currentStreamId='))
+        ?.split('=')?.[1]
+
+      // Priority: URL > Cookie > LocalStorage > First Stream
+      let targetStreamId = urlStreamId || cookieStreamId || storedStreamId
+      let targetStream = streams?.find(s => s.id === targetStreamId)
+
+      // Fallback to first stream if target not found or no streams exist
+      if (!targetStream && streams?.length) {
+        targetStream = streams[0]
+        targetStreamId = targetStream.id
       }
-    } catch (error: any) {
-      toast.error('Error loading revenue streams')
-      console.error('Error:', error)
+
+      if (targetStream) {
+        // Update all storage mechanisms
+        localStorage.setItem('currentStreamId', targetStream.id)
+        document.cookie = `currentStreamId=${targetStream.id};path=/`
+        setCurrentStream(targetStream)
+
+        // Update URL if needed (without triggering navigation)
+        if (!urlStreamId || urlStreamId !== targetStream.id) {
+          const searchParams = new URLSearchParams(window.location.search)
+          searchParams.set('stream', targetStream.id)
+          router.replace(`${pathname}?${searchParams.toString()}`)
+        }
+      } else {
+        // No streams available - clear everything
+        localStorage.removeItem('currentStreamId')
+        document.cookie = 'currentStreamId=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+        setCurrentStream(null)
+      }
+    } catch (error) {
+      console.error('Error loading streams:', error)
+      toast.error('Failed to load revenue streams')
     } finally {
       setLoading(false)
     }
@@ -232,31 +280,39 @@ export default function RevenueSwitcher() {
     }
   }
 
-  const switchStream = (stream: RevenueStream | null) => {
+  const switchStream = async (stream: RevenueStream | null) => {
+    if (!stream || stream.id === currentStream?.id) return
+  
     try {
-      if (stream) {
-        console.log('Switching to stream:', stream.name, stream.id)
-        setCurrentStream(stream)
-        localStorage.setItem('currentStreamId', stream.id)
-        document.cookie = `currentStreamId=${stream.id};path=/`
-      } else {
-        console.log('No stream to switch to')
-        setCurrentStream(null)
-        localStorage.removeItem('currentStreamId')
-        document.cookie = 'currentStreamId=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-      }
-      
-      // Navigate to the same page to force a full reload
-      const currentPath = window.location.pathname
-      router.push(currentPath + '?ts=' + Date.now())
+      // Update localStorage and cookie first
+      localStorage.setItem('currentStreamId', stream.id)
+      document.cookie = `currentStreamId=${stream.id};path=/`
 
-      // Dispatch custom event
-      const event = new CustomEvent(STREAM_CHANGE_EVENT, { detail: stream?.id || null })
-      console.log('Dispatching stream change event:', event)
-      window.dispatchEvent(event)
+      // Update UI state
+      setCurrentStream(stream)
+      setDropdownOpen(false)
+
+      // Dispatch event to notify other components
+      window.dispatchEvent(new CustomEvent(STREAM_CHANGE_EVENT, { detail: stream.id }))
+
+      // Update URL last (this will trigger a soft navigation)
+      const searchParams = new URLSearchParams(window.location.search)
+      searchParams.set('stream', stream.id)
+      await router.replace(`${pathname}?${searchParams.toString()}`)
+
     } catch (error) {
       console.error('Error switching stream:', error)
       toast.error('Failed to switch revenue stream')
+      
+      // Revert all state changes on error
+      setCurrentStream(currentStream)
+      if (currentStream) {
+        localStorage.setItem('currentStreamId', currentStream.id)
+        document.cookie = `currentStreamId=${currentStream.id};path=/`
+      } else {
+        localStorage.removeItem('currentStreamId')
+        document.cookie = 'currentStreamId=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+      }
     }
   }
 
@@ -317,12 +373,6 @@ export default function RevenueSwitcher() {
             <PlusCircle className="w-4 h-4 mr-2" />
             New Revenue Stream
           </DropdownMenuItem>
-          {currentStream && (
-            <DropdownMenuItem className="text-sm" onSelect={() => setShareDialogOpen(true)}>
-              <Share2 className="w-4 h-4 mr-2" />
-              Share Stream
-            </DropdownMenuItem>
-          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -371,14 +421,6 @@ export default function RevenueSwitcher() {
           open={true}
           onClose={() => setEditingStream(null)}
           onUpdate={handleUpdateStream}
-        />
-      )}
-
-      {currentStream && (
-        <ShareDialog
-          streamId={currentStream.id}
-          open={shareDialogOpen}
-          onClose={() => setShareDialogOpen(false)}
         />
       )}
     </>

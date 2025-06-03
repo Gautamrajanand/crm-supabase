@@ -49,16 +49,26 @@ export default function DashboardLayout({
 
         setSession(session)
 
-        // Check if this is a shared access session
+        // Check for stream selection
         const searchParams = new URLSearchParams(window.location.search)
-        const sharedStreamId = searchParams.get('stream')
+        const urlStreamId = searchParams.get('stream')
+        const storedStreamId = localStorage.getItem('currentStreamId')
         
-        if (sharedStreamId && session.user.email === 'anonymous@example.com') {
+        // If no stream in URL but we have one stored, redirect to include it
+        if (!urlStreamId && storedStreamId) {
+          const url = new URL(window.location.href)
+          url.searchParams.set('stream', storedStreamId)
+          router.replace(url.pathname + url.search)
+          return
+        }
+        
+        // Check if this is a shared access session
+        if (urlStreamId && session.user.email === 'anonymous@example.com') {
           // Get the user name from user_sessions
           const { data: userSession } = await supabase
             .from('user_sessions')
             .select('user_name')
-            .eq('stream_id', sharedStreamId)
+            .eq('stream_id', urlStreamId)
             .eq('user_email', 'anonymous@example.com')
             .order('created_at', { ascending: false })
             .limit(1)
@@ -77,11 +87,11 @@ export default function DashboardLayout({
           .single()
 
         // Get or create user session if accessing via share link
-        if (sharedStreamId) {
+        if (urlStreamId) {
           const { data: shareLink } = await supabase
             .from('share_links')
             .select('*')
-            .eq('stream_id', sharedStreamId)
+            .eq('stream_id', urlStreamId)
             .single()
 
           if (shareLink) {
@@ -89,7 +99,7 @@ export default function DashboardLayout({
             await supabase
               .from('user_sessions')
               .update({ last_accessed: new Date().toISOString() })
-              .eq('stream_id', sharedStreamId)
+              .eq('stream_id', urlStreamId)
               .eq('user_email', session.user.email)
           }
         }
