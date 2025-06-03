@@ -79,13 +79,13 @@ export default function CustomersPage() {
         const totalDealValue = Object.values(dealValuesByCustomer).reduce((sum, value) => sum + value, 0)
 
         // Then get only the customers with closed won deals
-        const { data: customers } = await supabase
+        const { data: customers, error: customersError } = await supabase
           .from('customers')
           .select(`
             *,
             deals:deals(*)
           `)
-          .eq('stream_id', streamId)
+          .eq('stream_id', streamId || '')
           .in('id', customerIds)
           .order('created_at', { ascending: false })
 
