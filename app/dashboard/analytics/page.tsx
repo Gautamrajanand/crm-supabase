@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { useCurrentStream } from '@/hooks/use-current-stream'
 
 type CustomerStats = {
   month: string
@@ -16,6 +17,7 @@ type ProjectStats = {
 }
 
 export default function AnalyticsPage() {
+  const { streamId } = useCurrentStream()
   const [customerStats, setCustomerStats] = useState<CustomerStats[]>([])
   const [projectStats, setProjectStats] = useState<ProjectStats[]>([])
   const [loading, setLoading] = useState(true)
