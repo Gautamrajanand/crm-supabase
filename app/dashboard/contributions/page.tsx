@@ -147,7 +147,7 @@ function ContributionsPage() {
             leads_converted: 0,
             total_deal_value: 0,
             avg_deal_size: 0,
-            deals_by_stage: {},
+            deals_by_stage: {} as Record<string, number>,
             conversion_rate: 0,
             response_time_avg: 0
           }
@@ -164,7 +164,7 @@ function ContributionsPage() {
             leads_converted: 0,
             total_deal_value: 0,
             avg_deal_size: 0,
-            deals_by_stage: {},
+            deals_by_stage: {} as Record<string, number>,
             conversion_rate: 0,
             response_time_avg: 0
           }
@@ -184,13 +184,15 @@ function ContributionsPage() {
             leads_converted: 0,
             total_deal_value: 0,
             avg_deal_size: 0,
-            deals_by_stage: {},
+            deals_by_stage: {} as Record<string, number>,
             conversion_rate: 0,
             response_time_avg: 0
           }
           member.leads_converted++
           member.total_deal_value += deal.value || 0
-          member.deals_by_stage[deal.stage] = (member.deals_by_stage[deal.stage] || 0) + 1
+          if (deal.stage) {
+            member.deals_by_stage[deal.stage] = (member.deals_by_stage[deal.stage] || 0) + 1
+          }
           memberMap.set(deal.owner, member)
         }
       })
