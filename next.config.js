@@ -8,7 +8,7 @@ const nextConfig = {
   },
   output: 'standalone',
   images: {
-    domains: [],
+    domains: ['avatars.githubusercontent.com'],
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [],
   },
