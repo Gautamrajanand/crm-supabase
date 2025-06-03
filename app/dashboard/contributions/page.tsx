@@ -57,9 +57,11 @@ type TeamPerformance = {
 type Contribution = {
   id: string
   created_at: string
-  type: string
+  contribution_type: string
   description: string
   user: string
+  user_name: string
+  entity_name: string
   value?: number
 }
 
@@ -175,7 +177,7 @@ function ContributionsPage() {
 
       // Process deals
       deals.forEach(deal => {
-        if (deal.owner) {
+        if (deal.owner && deal.stage) {
           const member = memberMap.get(deal.owner) || {
             name: deal.owner,
             email: '',
@@ -190,9 +192,7 @@ function ContributionsPage() {
           }
           member.leads_converted++
           member.total_deal_value += deal.value || 0
-          if (deal.stage) {
-            member.deals_by_stage[deal.stage] = (member.deals_by_stage[deal.stage] || 0) + 1
-          }
+          member.deals_by_stage[deal.stage] = (member.deals_by_stage[deal.stage] || 0) + 1
           memberMap.set(deal.owner, member)
         }
       })
@@ -310,7 +310,7 @@ function ContributionsPage() {
   const recentContributions = contributions.filter(c => new Date(c.created_at) >= thirtyDaysAgo)
 
   const metrics = {
-    totalContributors: stats.length,
+    totalContributors: teamMembers.length,
     totalContributions: contributions.length,
     recentContributions: recentContributions.length,
     contributionsPerDay: recentContributions.length / 30
@@ -321,6 +321,36 @@ function ContributionsPage() {
     value: metrics.recentContributions,
     change: ((metrics.contributionsPerDay - (contributions.length - metrics.recentContributions) / 30) / (contributions.length - metrics.recentContributions) / 30) * 100,
     changeType: metrics.contributionsPerDay > (contributions.length - metrics.recentContributions) / 30 ? 'positive' : 'negative'
+  }
+
+  const getContributionColor = (type: string) => {
+    switch (type) {
+      case 'prospect_added':
+        return 'text-green-500'
+      case 'lead_converted':
+        return 'text-blue-500'
+      case 'deal_won':
+        return 'text-orange-500'
+      default:
+        return 'text-gray-500'
+    }
+  }
+
+  const getContributionIcon = (type: string) => {
+    switch (type) {
+      case 'prospect_added':
+        return Users
+      case 'lead_converted':
+        return Target
+      case 'deal_won':
+        return DollarSign
+      default:
+        return Bell
+    }
+  }
+
+  const capitalizeWords = (str: string) => {
+    return str.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
   }
 
   return (
@@ -398,27 +428,24 @@ function ContributionsPage() {
                   <div className="flex items-center space-x-4">
                     <div
                       className={cn(
-                        'p-2 rounded-full bg-muted',
+                        'flex items-center gap-4 rounded-lg border p-3',
                         getContributionColor(contribution.contribution_type)
                       )}
                     >
-                      {getContributionIcon(contribution.contribution_type)}
+                      <div className="rounded-full border p-2">
+                        {getContributionIcon(contribution.contribution_type)}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm">
+                          <span className="font-medium">{contribution.user_name}</span>{' '}
+                          {capitalizeWords(contribution.contribution_type)}{' '}
+                          <span className="font-medium">{contribution.entity_name}</span>
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-medium">
-                        {contribution.user_name}{' '}
-                        <span className="text-muted-foreground">
-                          {contribution.contribution_type.split('_').map((word) =>
-                            word.charAt(0).toUpperCase() + word.slice(1)
-                          ).join(' ')}
-                        </span>
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {contribution.entity_name}
-                      </p>
+                    <div className="text-sm text-muted-foreground">
+                      {format(new Date(contribution.created_at), 'MMM d, yyyy h:mm a')}
                     </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
                     {format(new Date(contribution.created_at), 'MMM d, yyyy h:mm a')}
                   </div>
                 </div>
