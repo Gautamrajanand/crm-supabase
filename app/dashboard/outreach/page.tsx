@@ -52,7 +52,7 @@ export default function OutreachPage() {
             *,
             activities (*)
           `)
-          .eq('stream_id', streamId)
+          .eq('stream_id', streamId || '')
           .order('created_at', { ascending: false })
 
         setProspects((prospects || []) as ProspectWithActivities[])
