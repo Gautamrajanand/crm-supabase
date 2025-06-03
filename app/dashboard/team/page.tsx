@@ -37,7 +37,7 @@ export default function TeamPage() {
         const { data: streamData, error: streamError } = await supabase
           .from('revenue_streams')
           .select('id, name')
-          .eq('id', streamId)
+          .eq('id', streamId || '')
           .single()
 
         if (streamError) {

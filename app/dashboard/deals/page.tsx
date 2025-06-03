@@ -33,7 +33,7 @@ export default async function DealsPage() {
         company
       )
     `)
-    .eq('stream_id', currentStreamId)
+    .eq('stream_id', currentStreamId || '')
     .order('created_at', { ascending: false })
 
   return <DealsClient initialDeals={deals || []} />

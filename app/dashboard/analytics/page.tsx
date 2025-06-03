@@ -40,8 +40,9 @@ export default function AnalyticsPage() {
 
       // Fetch project statistics by status
       const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select('status')
+        .from('deals')
+        .select('*')
+        .eq('stream_id', streamId || '')
 
       if (projectError) throw projectError
 

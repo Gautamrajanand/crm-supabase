@@ -61,7 +61,7 @@ export default function TasksPage() {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
-        .eq('stream_id', streamId)
+        .eq('stream_id', streamId || '')
         .order('created_at', { ascending: false })
 
       if (error) throw error
