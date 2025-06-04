@@ -86,7 +86,7 @@ export default function TeamPage() {
         // Get invitations
         const { data: invitationsData, error: invitationsError } = await supabase
           .from('stream_invitations')
-          .select('id, stream_id, email, access_level as role, created_at, expires_at, status')
+          .select('id, stream_id, email, access_level, created_at, expires_at, status')
           .eq('stream_id', streamId)
           .eq('status', 'pending')
           .order('created_at')
@@ -96,8 +96,14 @@ export default function TeamPage() {
         const invitations = invitationsData?.map(i => ({
           id: i.id,
           email: i.email,
-          role: i.role,
-          permissions: i.permissions,
+          role: i.access_level || 'member',
+          permissions: {
+            outreach: 'view' as const,
+            deals: 'view' as const,
+            customers: 'view' as const,
+            tasks: 'view' as const,
+            calendar: 'view' as const
+          },
           created_at: i.created_at,
           expires_at: i.expires_at,
           status: i.status
