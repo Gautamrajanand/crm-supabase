@@ -113,7 +113,7 @@ export default function TasksPage() {
     }
   }
 
-  function getPriorityColor(priority: string) {
+  function getPriorityColor(priority: string | null) {
     switch (priority) {
       case 'high':
         return 'bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-400/30'
@@ -135,7 +135,7 @@ export default function TasksPage() {
             Manage your tasks and track their progress
           </p>
         </div>
-        <CreateTaskButton onTaskCreated={(task) => setTasks([task, ...tasks])} />
+        <CreateTaskButton onTaskCreated={(task) => setTasks(prev => [task, ...prev])} />
       </div>
 
       <TaskStats tasks={tasks} />
@@ -165,7 +165,7 @@ export default function TasksPage() {
                       <div className="min-w-0 flex-auto">
                         <div className="flex items-center gap-x-3">
                           <button
-                            onClick={() => toggleTaskCompletion(task.id, task.completed)}
+                            onClick={() => toggleTaskCompletion(task.id, task.completed ?? false)}
                             className={`h-6 w-6 flex-none rounded-full ${
                               task.completed
                                 ? 'bg-primary text-primary-foreground'
@@ -177,10 +177,10 @@ export default function TasksPage() {
                           <h2 className={`min-w-0 text-sm font-semibold ${
                             task.completed ? 'line-through text-muted-foreground' : ''
                           }`}>
-                            {task.title}
+                            {task.title ?? ''}
                           </h2>
-                          <Badge variant="outline" className={getPriorityColor(task.priority)}>
-                            {task.priority}
+                          <Badge variant="outline" className={getPriorityColor(task.priority ?? 'medium')}>
+                            {task.priority ?? 'medium'}
                           </Badge>
                         </div>
                         {task.description && (

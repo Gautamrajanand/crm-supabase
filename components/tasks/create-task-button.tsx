@@ -19,9 +19,13 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Database } from '@/types/database'
 
-type Task = Database['public']['Tables']['tasks']['Insert']
+type Task = Database['public']['Tables']['tasks']['Row']
 
-export function CreateTaskButton() {
+type CreateTaskButtonProps = {
+  onTaskCreated?: (task: Task) => void
+}
+
+export function CreateTaskButton({ onTaskCreated }: CreateTaskButtonProps) {
   const router = useRouter()
   const { streamId } = useCurrentStream()
   const [open, setOpen] = useState(false)
@@ -86,7 +90,11 @@ export function CreateTaskButton() {
       console.log('Task created:', data)
       toast.success('Task created successfully')
       setOpen(false)
-      window.location.reload()
+      if (onTaskCreated) {
+        onTaskCreated(data)
+      } else {
+        window.location.reload()
+      }
     } catch (error) {
       console.error('Error creating task:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to create task')
