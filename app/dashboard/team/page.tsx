@@ -6,9 +6,20 @@ import { useRouter } from 'next/navigation'
 import TeamClient from './team-client'
 import type { TeamClientProps } from './team-client'
 import { useCurrentStream } from '@/hooks/use-current-stream'
+import type { MemberRole } from './team-client'
 
 type Member = TeamClientProps['members'][0]
 type Invitation = TeamClientProps['invitations'][0]
+
+type StreamInvitation = {
+  id: string
+  stream_id: string
+  email: string
+  access_level: string
+  created_at: string
+  expires_at: string
+  status: string
+}
 
 export default function TeamPage() {
   const [stream, setStream] = useState<{ id: string; name: string } | null>(null)
@@ -96,14 +107,14 @@ export default function TeamPage() {
         const invitations = invitationsData?.map(i => ({
           id: i.id,
           email: i.email,
-          role: i.access_level || 'member',
-          permissions: {
-            outreach: 'view' as const,
-            deals: 'view' as const,
-            customers: 'view' as const,
-            tasks: 'view' as const,
-            calendar: 'view' as const
-          },
+          role: (i.access_level as MemberRole) || 'member',
+          permissions: JSON.stringify({
+            outreach: 'view',
+            deals: 'view',
+            customers: 'view',
+            tasks: 'view',
+            calendar: 'view'
+          }),
           created_at: i.created_at,
           expires_at: i.expires_at,
           status: i.status

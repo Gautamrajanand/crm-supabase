@@ -130,12 +130,30 @@ export default function TeamClient({ workspace, members: initialMembers, invitat
       // Fetch the new invitation to add to the list
       const { data: newInvitation, error: fetchError } = await supabase
         .from('stream_invitations')
-        .select('id, email, access_level as role, created_at, expires_at, status')
+        .select('id, email, access_level, created_at, expires_at, status')
         .eq('id', invitation_id)
         .single()
 
       if (fetchError) throw fetchError
-      setInvitations([...invitations, newInvitation])
+
+      const formattedInvitation = {
+        id: newInvitation.id,
+        email: newInvitation.email,
+        role: newInvitation.access_level as MemberRole,
+        permissions: JSON.stringify({
+          outreach: 'view',
+          deals: 'view',
+          customers: 'view',
+          tasks: 'view',
+          calendar: 'view'
+        }),
+        created_at: newInvitation.created_at,
+        expires_at: newInvitation.expires_at,
+        status: newInvitation.status
+      }
+
+      if (fetchError) throw fetchError
+      setInvitations([...invitations, formattedInvitation])
 
       toast.success('Invitation created successfully')
     } catch (error: any) {
