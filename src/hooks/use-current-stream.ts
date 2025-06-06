@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '../lib/supabase/client'
-import type { Database } from '@/types/supabase'
+import type { Database } from '../types/supabase'
 
 const supabase = createClient()
 

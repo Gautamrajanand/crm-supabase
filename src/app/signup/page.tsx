@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import { Database } from '@/types/database'
+import { Database } from '../../types/database'
 import Link from 'next/link'
 
 import Logo from '../../components/logo'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
 
 export default function SignUpPage() {
   const [fullName, setFullName] = useState('')

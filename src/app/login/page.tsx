@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
-import { Database } from '@/types/database';
+import { Database } from '../../types/database';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { Logo } from '@/components/logo';
+import { Logo } from '../../components/logo';
 
 export default function LoginPage() {
   const router = useRouter();
