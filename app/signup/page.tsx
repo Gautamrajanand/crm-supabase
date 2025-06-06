@@ -6,7 +6,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '@/types/database'
 import Link from 'next/link'
 
-import { Logo } from '@/components/logo'
+import Logo from '../../components/logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
