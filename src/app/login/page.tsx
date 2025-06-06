@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import { Database } from '@/types/database';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import Logo from '../../components/logo';
+import { Logo } from '@/components/logo';
 
 export default function LoginPage() {
   const router = useRouter();
