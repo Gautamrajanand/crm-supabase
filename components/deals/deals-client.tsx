@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { DealBoard } from './deal-board'
 import { DealFilters } from './deal-filters'
 import { CreateDealButton } from './create-deal-button'
 import { DealStats } from './deal-stats'
 import { Database } from '@/types/database'
-import type { DropResult } from 'react-beautiful-dnd'
+import type { DropResult } from '@hello-pangea/dnd'
 import { useCurrentStream } from '@/hooks/use-current-stream'
 import { Spinner } from '@/components/ui/spinner'
 import {
@@ -22,11 +22,20 @@ type DealStage = 'lead' | 'contact' | 'proposal' | 'negotiation' | 'closed_won' 
 
 import { Customer } from '@/types/shared'
 
-export type Deal = Database['public']['Tables']['deals']['Row'] & {
+export interface Deal {
+  id: string
+  title: string
+  value: number
   stage: DealStage
-  customers: Customer | null
+  description: string | null
   notes: string | null
   expected_close_date: string | null
+  created_at: string
+  updated_at: string
+  stream_id: string
+  user_id: string
+  customer_id: string
+  customers?: Customer | null
 }
 
 interface DealsClientProps {
@@ -41,7 +50,10 @@ export function DealsClient({ initialDeals }: DealsClientProps) {
   const [minValue, setMinValue] = useState('')
   const [maxValue, setMaxValue] = useState('')
 
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   const stats = useMemo(() => {
     const totalValue = deals.reduce((sum, deal) => sum + (deal.value || 0), 0)
@@ -101,7 +113,11 @@ export function DealsClient({ initialDeals }: DealsClientProps) {
       const { data, error } = await query
 
       if (error) throw error
-      setDeals((data || []) as Deal[])
+      setDeals((data || []).map(deal => ({
+        ...deal,
+        stage: deal.stage as DealStage,
+        customers: deal.customers as Customer | null
+      })))
     } catch (error) {
       console.error('Error fetching deals:', error)
     } finally {
@@ -146,8 +162,8 @@ export function DealsClient({ initialDeals }: DealsClientProps) {
     fetchDeals()
   }, [streamId, searchQuery, sortOrder, minValue, maxValue])
 
-  const handleDealUpdate = (updatedDeal: Deal) => {
-    setDeals(prev => prev.map(deal => deal.id === updatedDeal.id ? updatedDeal : deal))
+  const handleDealUpdate = (deal: any) => {
+    setDeals(prev => prev.map(d => d.id === deal.id ? deal : d))
   }
 
   const handleDealDelete = (dealId: string) => {

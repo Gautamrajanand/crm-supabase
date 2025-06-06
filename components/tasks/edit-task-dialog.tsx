@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '@/types/database'
 import {
   Dialog,
@@ -26,7 +26,10 @@ interface EditTaskDialogProps {
 
 export function EditTaskDialog({ task, open, onOpenChange, onTaskUpdated }: EditTaskDialogProps) {
   const [loading, setLoading] = useState(false)
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -131,7 +134,7 @@ export function EditTaskDialog({ task, open, onOpenChange, onTaskUpdated }: Edit
               type="date"
               id="dueDate"
               name="dueDate"
-              defaultValue={task.due_date?.split('T')[0]}
+              defaultValue={task.due_date?.split('T')[0] || undefined}
               min={new Date().toISOString().split('T')[0]}
             />
           </div>

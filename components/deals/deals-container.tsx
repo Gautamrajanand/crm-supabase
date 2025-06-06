@@ -4,19 +4,24 @@ import { useState, useEffect } from 'react'
 import { Database } from '@/types/database'
 import { DealBoard } from './deal-board'
 import { CreateDealButton } from './create-deal-button'
+import { Customer } from '@/types/shared'
 
 type DealStage = 'lead' | 'contact' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost'
 
-type Deal = Database['public']['Tables']['deals']['Row'] & {
+interface Deal {
+  id: string
+  title: string
+  value: number
   stage: DealStage
-  customers: {
-    id: string
-    name: string
-    company: string | null
-    email: string | null
-  } | null
+  description: string | null
   notes: string | null
   expected_close_date: string | null
+  created_at: string
+  updated_at: string
+  stream_id: string
+  user_id: string
+  customer_id: string
+  customers?: Customer | null
 }
 
 export function DealsContainer({ initialDeals }: { initialDeals: Deal[] }) {
@@ -53,12 +58,16 @@ export function DealsContainer({ initialDeals }: { initialDeals: Deal[] }) {
           if (!result.destination || result.source.droppableId === result.destination.droppableId) {
             return
           }
+          const deal = deals.find(d => d.id === result.draggableId)
+          if (!deal) return
           const updatedDeal = {
-            ...deals.find(d => d.id === result.draggableId)!,
+            ...deal,
             stage: result.destination.droppableId as DealStage
           }
           handleDealUpdated(updatedDeal)
         }}
+        onDealUpdate={handleDealUpdated}
+        onDealDelete={handleDealDeleted}
       />
     </div>
   )

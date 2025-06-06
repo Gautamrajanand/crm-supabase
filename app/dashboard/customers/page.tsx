@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import CustomerList from '@/components/customers/customer-list'
 import { Database } from '@/types/database'
@@ -43,7 +43,10 @@ export default function CustomersPage() {
   })
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const { stream, streamId, loading: streamLoading } = useCurrentStream()
 
   useEffect(() => {
@@ -70,7 +73,7 @@ export default function CustomersPage() {
         const customerIds = [...new Set(closedWonDeals?.filter(deal => deal.customer_id).map(deal => deal.customer_id as string) || [])]
 
         // Calculate total deal value per customer
-        const dealValuesByCustomer = closedWonDeals?.reduce((acc, deal) => {
+        const dealValuesByCustomer = closedWonDeals?.reduce((acc: Record<string, number>, deal: any) => {
           acc[deal.customer_id] = (acc[deal.customer_id] || 0) + (deal.value || 0)
           return acc
         }, {} as Record<string, number>) || {}
@@ -79,7 +82,7 @@ export default function CustomersPage() {
         const totalDealValue = Object.values(dealValuesByCustomer).reduce((sum, value) => sum + value, 0)
 
         // Then get only the customers with closed won deals
-        const { data: customers, error: customersError } = await supabase
+        const { data: customersData, error: customersError } = await supabase
           .from('customers')
           .select(`
             *,
@@ -90,8 +93,9 @@ export default function CustomersPage() {
           .order('created_at', { ascending: false })
 
         // Enhance customers with deal information
-        const customersWithDeals = (customers || []).map(customer => ({
+        const customersWithDeals = (customersData || []).map((customer: any) => ({
           ...customer,
+          deals: closedWonDeals?.filter((d: any) => d.customer_id === customer.id) || [],
           dealValue: dealValuesByCustomer[customer.id] || 0,
           dealsCount: customer.deals?.filter((deal: any) => deal.stage === 'closed_won').length || 0
         })) || []

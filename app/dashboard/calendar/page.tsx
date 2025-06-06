@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, FormEvent, FC } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '@/types/database'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -280,7 +280,10 @@ export default function CalendarPage() {
     upcomingEvents: 0,
   })
 
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const router = useRouter()
   const { streamId, loading: streamLoading } = useCurrentStream()
   const [session, setSession] = useState<any>(null)

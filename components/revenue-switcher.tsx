@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/database'
 import { useRouter, usePathname } from 'next/navigation'
 import { PlusCircle, ChevronDown, Pencil, Trash2 } from 'lucide-react'
 import { EditStreamDialog } from './edit-stream-dialog'
@@ -49,7 +50,10 @@ export default function RevenueSwitcher() {
   
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   useEffect(() => {
     const loadInitialStream = async () => {

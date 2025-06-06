@@ -1,41 +1,42 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/database'
 import { Board } from '@/components/board/board'
 
 interface BoardEntry {
-  id: string
+  id: number
   title: string
-  description?: string
-  priority: 'Low' | 'Medium' | 'High'
-  revenue_potential?: number
-  company?: string
-  contact_name?: string
-  contact_email?: string
-  contact_phone?: string
-  last_contacted?: string
-  next_followup?: string
-  column_id: string
-  assigned_to_id?: string
+  description?: string | null
+  priority: string | null
+  revenue_potential?: number | null
+  company?: string | null
+  contact_name?: string | null
+  contact_email?: string | null
+  contact_phone?: string | null
+  last_contacted?: string | null
+  next_followup?: string | null
+  column_id: number
+  assigned_to?: number | null
   team_member?: {
-    id: string
+    id: number
     full_name: string
-    avatar_url?: string
+    avatar_url?: string | null
   } | null
 }
 
 interface BoardColumn {
-  id: string
+  id: number
   name: string
-  board_id: string
+  board_id: number | null
+  position: number
   entries: BoardEntry[]
 }
 
 interface Board {
-  id: string
-  name: string
-  type: string
+  id: number
+  title: string
   columns: BoardColumn[]
 }
 
@@ -47,7 +48,10 @@ export default function BoardContent(props: BoardContentProps) {
   const [boards, setBoards] = useState<Board[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   useEffect(() => {
     fetchBoardData()
@@ -60,15 +64,15 @@ export default function BoardContent(props: BoardContentProps) {
 
       // First, fetch boards
       const { data: boardsData, error: boardsError } = await supabase
-        .from('boards')
+        .from('board')
         .select('*')
-        .order('created_at')
+        .order('id')
 
       if (boardsError) throw boardsError
 
       // Then fetch columns for all boards
       const { data: columnsData, error: columnsError } = await supabase
-        .from('board_columns')
+        .from('board_column')
         .select('*')
         .order('position')
 
@@ -76,33 +80,14 @@ export default function BoardContent(props: BoardContentProps) {
 
       // Finally, fetch entries with team member info
       const { data: entriesData, error: entriesError } = await supabase
-        .from('board_entries')
-        .select(`
-          id,
-          title,
-          description,
-          priority,
-          revenue_potential,
-          company,
-          contact_name,
-          contact_email,
-          contact_phone,
-          last_contacted,
-          next_followup,
-          column_id,
-          assigned_to_id,
-          team_member:team_members(
-            id,
-            full_name,
-            avatar_url
-          )
-        `)
-        .order('created_at')
+        .from('board_entrie')
+        .select('*')
+        .order('id')
 
       if (entriesError) throw entriesError
 
       // Organize the data into a nested structure
-      const organizedBoards = boardsData.map(board => ({
+      const boardsWithData = (boardsData || []).map((board: any) => ({
         ...board,
         columns: columnsData
           .filter(col => col.board_id === board.id)
@@ -112,7 +97,7 @@ export default function BoardContent(props: BoardContentProps) {
           }))
       }))
 
-      setBoards(organizedBoards)
+      setBoards(boardsWithData as any)
     } catch (error) {
       console.error('Error fetching board data:', error)
       setError('Failed to load boards. Please try again.')
@@ -122,11 +107,14 @@ export default function BoardContent(props: BoardContentProps) {
   }
 
   async function handleEntryMove(entryId: string, fromColumnId: string, toColumnId: string) {
+    const numericEntryId = parseInt(entryId)
+    const numericFromColumnId = parseInt(fromColumnId)
+    const numericToColumnId = parseInt(toColumnId)
     try {
       const { error } = await supabase
-        .from('board_entries')
-        .update({ column_id: toColumnId })
-        .eq('id', entryId)
+        .from('board_entrie')
+        .update({ column_id: numericToColumnId })
+        .eq('id', numericEntryId)
 
       if (error) throw error
 
@@ -156,9 +144,16 @@ export default function BoardContent(props: BoardContentProps) {
     <div className="space-y-8">
       {boards.map(board => (
         <div key={board.id} className="space-y-4">
-          <h2 className="text-lg font-medium text-gray-900">{board.name}</h2>
+          <h2 className="text-lg font-medium text-gray-900">{board.title}</h2>
           <Board
-            columns={board.columns}
+            columns={board.columns.map(col => ({
+              ...col,
+              id: col.id.toString(),
+              entries: col.entries.map(entry => ({
+                ...entry,
+                id: entry.id.toString()
+              }))
+            }))}
             onEntryMove={handleEntryMove}
           />
         </div>

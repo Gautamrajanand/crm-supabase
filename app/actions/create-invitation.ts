@@ -1,6 +1,6 @@
 'use server'
 
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient as createClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { Database } from '@/types/database'
 import { InviteFormData, InvitationResponse } from '@/types/invitation'
@@ -9,7 +9,17 @@ export async function createInvitation(streamId: string, data: InviteFormData): 
   'use server'
 
   try {
-    const supabase = createServerComponentClient<Database>({ cookies })
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get: (name: string) => cookies().get(name)?.value,
+          set: () => {},
+          remove: () => {},
+        },
+      }
+    )
 
     // Get current user
     const { data: { user: currentUser }, error: getCurrentUserError } = await supabase.auth.getUser()

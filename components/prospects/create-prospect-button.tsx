@@ -14,20 +14,23 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/database'
 import { useRouter } from 'next/navigation'
 import { useCurrentStream } from '@/hooks/use-current-stream'
 import { toast } from 'sonner'
 
 export function CreateProspectButton() {
   const [open, setOpen] = useState(false)
-  const [addedBy, setAddedBy] = useState('')
-  const [assignedTo, setAssignedTo] = useState('')
+
   const [loading, setLoading] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const router = useRouter()
   const { streamId } = useCurrentStream()
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -56,34 +59,28 @@ export function CreateProspectButton() {
 
       const formData = new FormData(form)
       
-      const prospectData = {
-        name: formData.get('name') as string,
-        email: formData.get('email') as string,
-        company: formData.get('company') as string,
-        title: formData.get('title') as string,
+      const name = formData.get('name') as string
+      const email = formData.get('email') as string
+      const company = formData.get('company') as string
+      const title = formData.get('title') as string
+
+      // Validate required fields
+      if (!name || !email || !company || !title) {
+        toast.error('Name, email, company and title are required')
+        return
+      }
+
+      const prospectData: Database['public']['Tables']['prospects']['Insert'] = {
+        name,
+        email,
+        company,
+        title,
         phone: formData.get('phone') as string || null,
         notes: formData.get('notes') as string || null,
         status: 'new',
         stream_id: streamId,
         user_id: user.id,
-        added_by: addedBy,
-        assigned_to: assignedTo,
-        deal_value: parseFloat(formData.get('deal_value') as string) || 0,
-        website: formData.get('website') as string || null,
-        linkedin_url: formData.get('linkedin_url') as string || null,
-        industry: formData.get('industry') as string || null,
-        company_size: formData.get('company_size') as string || null,
-        source: formData.get('source') as string || null,
-        priority: formData.get('priority') as string || null
-      }
-
-      // Validate required fields
-      const requiredFields = ['name', 'email', 'company', 'title']
-      for (const field of requiredFields) {
-        if (!prospectData[field]) {
-          toast.error(`${field.charAt(0).toUpperCase() + field.slice(1)} is required`)
-          return
-        }
+        deal_value: parseFloat(formData.get('deal_value') as string) || 0
       }
 
       // Validate deal value
@@ -96,7 +93,7 @@ export function CreateProspectButton() {
       // Insert prospect
       const { error: insertError } = await supabase
         .from('prospects')
-        .insert([prospectData])
+        .insert(prospectData)
         .select()
 
       if (insertError) {
@@ -227,63 +224,12 @@ export function CreateProspectButton() {
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="source">Lead Source (optional)</Label>
-              <Select name="source">
-                <SelectTrigger>
-                  <SelectValue placeholder="Select source" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="website">Website</SelectItem>
-                  <SelectItem value="linkedin">LinkedIn</SelectItem>
-                  <SelectItem value="referral">Referral</SelectItem>
-                  <SelectItem value="conference">Conference</SelectItem>
-                  <SelectItem value="cold_outreach">Cold Outreach</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="priority">Priority (optional)</Label>
-              <Select name="priority">
-                <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+
           <div className="space-y-2">
             <Label htmlFor="notes">Notes (optional)</Label>
             <Textarea id="notes" name="notes" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="added_by">Added By (optional)</Label>
-              <Input
-                id="added_by"
-                name="added_by"
-                value={addedBy}
-                onChange={(e) => setAddedBy(e.target.value)}
-                placeholder="Enter name of person who added this prospect"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="assigned_to">Assigned To (optional)</Label>
-              <Input
-                id="assigned_to"
-                name="assigned_to"
-                value={assignedTo}
-                onChange={(e) => setAssignedTo(e.target.value)}
-                placeholder="Enter name of assigned person"
-              />
-            </div>
-          </div>
+
           <div className="flex justify-end space-x-2">
             <Button
               type="button"

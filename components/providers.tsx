@@ -1,14 +1,17 @@
 'use client'
 
 import React from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient as createClient } from '@supabase/ssr'
 
 interface ProvidersProps {
   children: React.ReactNode
 }
 
 export function Providers({ children }: ProvidersProps) {
-  const supabase = createClientComponentClient()
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   return (
     <React.StrictMode>

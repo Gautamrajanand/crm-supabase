@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { useRouter } from 'next/navigation'
+import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '@/types/database'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 interface SignUpFormProps {
@@ -16,7 +16,10 @@ export default function SignUpForm({ email, streamId, token }: SignUpFormProps) 
   const [loading, setLoading] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -67,14 +70,13 @@ export default function SignUpForm({ email, streamId, token }: SignUpFormProps) 
 
       const { error: memberError } = await supabase
         .from('revenue_stream_members')
-        .insert([
-          {
-            stream_id: streamId,
-            user_id: session.session.user.id,
-            role: invite.role,
-            can_edit: true,
-          },
-        ])
+        .insert({
+          profile_id: session.session.user.id,
+          stream_id: streamId,
+          role: invite.role as 'admin' | 'member' | 'viewer',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
 
       if (memberError) throw memberError
 

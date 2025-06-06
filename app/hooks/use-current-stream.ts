@@ -95,7 +95,7 @@ export function useCurrentStream(): CurrentStream {
         schema: 'public',
         table: 'revenue_streams',
         filter: `id=eq.${streamId}`
-      }, (payload) => {
+      }, (payload: { eventType: string; new: any; old: any }) => {
         if (payload.eventType === 'DELETE') {
           setStream(null)
           setStreamId('')

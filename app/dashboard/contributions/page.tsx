@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, FormEvent, FC, createElement } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns'
 import { toast } from 'sonner'
 import {
@@ -71,7 +71,10 @@ function ContributionsPage() {
   const [performance, setPerformance] = useState<TeamPerformance | null>(null)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   useEffect(() => {
     loadTeamPerformance()

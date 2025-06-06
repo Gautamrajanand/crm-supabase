@@ -4,7 +4,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Users, DollarSign, CalendarRange, Settings, Bell, CheckCircle, LogOut } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/database'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
@@ -59,7 +60,10 @@ const routes = [
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   return (
     <div className="space-y-4 py-4 flex flex-col h-full bg-background border-r">

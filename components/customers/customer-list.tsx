@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, memo } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
@@ -14,9 +14,24 @@ import { cn } from '@/lib/utils'
 import { Database } from '@/types/database'
 import { useCustomerDrawer } from '@/context/customer-drawer-context'
 
-type Deal = Database['public']['Tables']['deals']['Row']
+interface Deal {
+  id: string
+  value: number
+  stage: string | null
+  created_at: string
+  customer_id: string
+  description: string | null
+  expected_close_date: string | null
+  notes: string | null
+  stream_id: string
+  title: string
+  updated_at: string
+  user_id: string
+}
 
-type Customer = Database['public']['Tables']['customers']['Row'] & {
+interface Customer {
+  id: string
+  name: string
   deals?: Deal[]
   dealValue?: number
   dealsCount?: number
@@ -34,6 +49,10 @@ type Customer = Database['public']['Tables']['customers']['Row'] & {
   tags: string[]
   address: string | null
   lifetime_value: number | null
+  created_at: string
+  updated_at: string
+  stream_id: string
+  user_id: string
 }
 
 type SortableFields = 'name' | 'company' | 'email' | 'created_at' | 'status' | 'dealValue'
@@ -67,7 +86,10 @@ interface CustomerListProps {
 
 export default function CustomerList({ streamId }: CustomerListProps) {
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -102,7 +124,14 @@ export default function CustomerList({ streamId }: CustomerListProps) {
         .order(sortField === 'dealValue' ? 'created_at' : sortField, { ascending: sortOrder === 'asc' })
 
       if (error) throw error
-      setCustomers(data || [])
+      const typedData = (data || []).map(customer => ({
+        ...customer,
+        deals: customer.deals as Deal[] || [],
+        status: customer.status || 'active',
+        tags: customer.tags || [],
+        user_id: customer.user_id || ''
+      })) as Customer[]
+      setCustomers(typedData)
     } catch (error) {
       console.error('Error fetching customers:', error)
       toast.error('Failed to load customers')
@@ -183,7 +212,7 @@ export default function CustomerList({ streamId }: CustomerListProps) {
   const filteredCustomers = useMemo(() => customers.filter((customer) =>
     customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (customer.company || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    customer.email.toLowerCase().includes(searchQuery.toLowerCase())
+    (customer.email || '').toLowerCase().includes(searchQuery.toLowerCase())
   ).sort((a, b) => {
     if (sortField === 'dealValue') {
       const aValue = a.deals?.reduce((sum, deal) => sum + (deal.value || 0), 0) || 0
@@ -319,13 +348,15 @@ export default function CustomerList({ streamId }: CustomerListProps) {
                   onClick={() => {
                     openCustomerDrawer({
                       ...customer,
-                      dealValue: customer.deals?.filter((deal: any) => deal.stage === 'closed_won').reduce((sum, deal) => sum + (deal.value || 0), 0) || 0
+                      dealValue: customer.deals?.filter(deal => deal.stage === 'closed_won').reduce((sum, deal) => sum + (deal.value || 0), 0) || 0,
+                      tags: customer.tags || [],
+                      user_id: customer.user_id || ''
                     })
                   }}
                 >
                   <TableCell>{customer.name}</TableCell>
                   <TableCell>{customer.company}</TableCell>
-                  <TableCell>{customer.email}</TableCell>
+                  <TableCell>{customer.email || '-'}</TableCell>
                   <TableCell>
                     {formatCurrency(customer.deals?.filter((deal: any) => deal.stage === 'closed_won').reduce((sum: number, deal: { value?: number }) => sum + (deal.value || 0), 0) || 0)}
                   </TableCell>

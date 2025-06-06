@@ -3,7 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { useCurrentStream } from '@/hooks/use-current-stream'
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/database'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,7 +31,10 @@ export function CreateTaskButton({ onTaskCreated }: CreateTaskButtonProps) {
   const { streamId } = useCurrentStream()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()

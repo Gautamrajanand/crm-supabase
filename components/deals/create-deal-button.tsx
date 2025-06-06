@@ -1,10 +1,10 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCurrentStream } from '@/hooks/useCurrentStream'
+import { useCurrentStream } from '@/hooks/use-current-stream'
 import { useState } from 'react'
-import { Database } from '@/lib/database.types'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -26,17 +26,19 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 
-type Deal = Database['public']['Tables']['deals']['Row'] & {
+interface Deal {
+  id: string
+  title: string
+  value: number
   stage: 'lead' | 'contact' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost'
-  customers: {
-    id: string
-    name: string
-    company: string | null
-    email: string | null
-  } | null
+  description: string | null
   notes: string | null
   expected_close_date: string | null
-  stream_id: string | null
+  created_at: string
+  updated_at: string
+  stream_id: string
+  user_id: string
+  customer_id: string
 }
 
 const DEAL_STAGES = [
@@ -68,7 +70,10 @@ export function CreateDealButton({ onDealCreated }: CreateDealButtonProps) {
     stream_id: ''
   })
 
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const router = useRouter()
   const { streamId } = useCurrentStream()
 
@@ -135,20 +140,18 @@ export function CreateDealButton({ onDealCreated }: CreateDealButtonProps) {
       if (!customer) throw new Error('Failed to create customer')
 
       // Create deal
-      const dealData = {
-        title: formData.title.trim(),
-        value: parseFloat(formData.value),
-        stage: formData.stage,
-        expected_close_date: formData.expectedCloseDate || null,
-        notes: formData.notes.trim() || null,
-        user_id: user.id,
-        customer_id: customer.id,
-        stream_id: streamId
-      }
-
       const { data: deal, error: dealError } = await supabase
         .from('deals')
-        .insert([dealData])
+        .insert({
+          title: formData.title.trim(),
+          value: parseFloat(formData.value),
+          stage: formData.stage,
+          customer_id: customer.id,
+          stream_id: streamId,
+          user_id: user.id,
+          expected_close_date: formData.expectedCloseDate || null,
+          notes: formData.notes.trim() || null
+        })
         .select()
         .single()
 
@@ -168,7 +171,10 @@ export function CreateDealButton({ onDealCreated }: CreateDealButtonProps) {
         stream_id: streamId
       })
 
-      onDealCreated(deal)
+      onDealCreated({
+        ...deal,
+        stage: deal.stage as Deal['stage']
+      })
       setIsModalOpen(false)
       
       // Add a small delay then refresh the page

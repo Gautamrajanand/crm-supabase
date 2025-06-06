@@ -1,17 +1,21 @@
 'use client'
 
 import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
+import { Database } from '@/types/database';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { Logo } from '@/components/Logo';
+import { Logo } from '@/components/logo';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
   const [email, setEmail] = useState(searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);

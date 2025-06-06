@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '@/types/database'
 
 export default function JoinPage({
@@ -11,7 +11,10 @@ export default function JoinPage({
 }) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   useEffect(() => {
     const init = async () => {
@@ -51,14 +54,18 @@ export default function JoinPage({
           // If user is logged in, add them to the stream
           const { error: memberError } = await supabase
             .from('revenue_stream_members')
-            .insert([
-              {
-                stream_id: streamId,
-                user_id: user.id,
-                role: invite.role,
-                can_edit: true,
-              },
-            ])
+            .insert({
+              stream_id: streamId,
+              user_id: user.id,
+              role: 'member',
+              permissions: JSON.stringify({
+                outreach: 'view',
+                deals: 'view',
+                customers: 'view',
+                tasks: 'view',
+                calendar: 'view'
+              })
+            } as any)
 
           if (memberError) {
             setError('Error adding you to the stream')

@@ -1,6 +1,6 @@
 'use client'
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { useRouter, usePathname } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
 import React, { useEffect, useState } from 'react'
@@ -32,7 +32,10 @@ export default function DashboardLayout({
   const [profile, setProfile] = useState<Profile | null>(null)
   const [sharedUserName, setSharedUserName] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   useEffect(() => {
     console.log('Loading session...')

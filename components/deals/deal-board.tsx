@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { DragDropContext, Draggable, DropResult } from 'react-beautiful-dnd'
+import { DragDropContext, Draggable, DropResult } from '@hello-pangea/dnd'
 import { useCustomerDrawer } from '@/context/customer-drawer-context'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/database'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import { EditDealDialog } from './edit-deal-dialog'
 import { StrictModeDroppable } from './strict-mode-droppable'
-import { Database } from '@/types/database'
 import { Deal } from './deals-client'
 import { useCurrentStream } from '@/hooks/use-current-stream'
 import { Customer } from '@/types/shared'
@@ -25,7 +25,10 @@ interface DealCardProps {
 
 function DealCard({ deal, index, onUpdate, onDelete, onCustomerClick }: DealCardProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return null
@@ -154,7 +157,10 @@ interface DealBoardProps {
 
 export function DealBoard({ deals, onDragEnd, onDealUpdate, onDealDelete }: DealBoardProps) {
   const { openCustomerDrawer } = useCustomerDrawer()
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   const handleCustomerClick = async (deal: Deal) => {
     if (!deal.customers) return

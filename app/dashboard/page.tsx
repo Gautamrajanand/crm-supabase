@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import { DashboardStats } from '@/components/dashboard/dashboard-stats'
 import { DealsByStage } from '@/components/dashboard/deals-by-stage'
@@ -37,7 +37,10 @@ export default function DashboardPage() {
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const { stream, streamId, loading: streamLoading } = useCurrentStream()
 
   useEffect(() => {

@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/database'
 import Link from 'next/link'
 
-import { Logo } from '@/components/Logo'
+import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -18,7 +19,10 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,9 +57,7 @@ export default function SignUpPage() {
 
         // 1. Create workspace and add user as owner in a single transaction
         const { data: workspaceId, error: workspaceError } = await supabase.rpc('create_workspace', {
-          p_name: workspaceName,
-          p_description: `Workspace for ${workspaceName}`,
-          p_user_id: signUpData.user.id
+          workspace_name: workspaceName
         });
 
         if (workspaceError) {
@@ -64,7 +66,7 @@ export default function SignUpPage() {
         }
 
         // 2. Create initial revenue stream and add user as owner
-        const { data: streamId, error: streamError } = await supabase.rpc('create_revenue_stream', {
+        const { data: streamData, error: streamError } = await supabase.rpc('create_revenue_stream' as any, {
           p_name: 'Main Revenue Stream',
           p_description: `Main revenue stream for ${workspaceName}`,
           p_workspace_id: workspaceId,
@@ -81,13 +83,13 @@ export default function SignUpPage() {
         document.cookie = 'currentStreamId=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT';
         
         // Set the new stream
-        localStorage.setItem('currentStreamId', streamId);
-        document.cookie = `currentStreamId=${streamId};path=/`;
+        localStorage.setItem('currentStreamId', streamData.id);
+        document.cookie = `currentStreamId=${streamData.id};path=/`;
 
         // Success - show message and redirect to email verification
         const successMessage = 'Please check your email to verify your account.';
         setMessage(successMessage);
-        router.push(`/login?message=${encodeURIComponent(successMessage)}`);
+        router.push(`/dashboard/${(streamData as any)?.id || ''}?message=${encodeURIComponent(successMessage)}`);
         router.refresh(); // Ensure all state is refreshed
       } catch (error) {
         console.error('Signup process error:', error);

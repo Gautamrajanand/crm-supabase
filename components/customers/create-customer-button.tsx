@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '@/types/database'
 import { useRouter } from 'next/navigation'
 import { useCurrentStream } from '@/hooks/use-current-stream'
@@ -22,7 +22,10 @@ export function CreateCustomerButton() {
 
   const router = useRouter()
   const { streamId: currentStreamId } = useCurrentStream()
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

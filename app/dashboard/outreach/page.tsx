@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { ProspectWithActivities } from '@/types/outreach'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import { ProspectList } from '@/components/prospects/prospect-list'
 import { CreateProspectButton } from '@/components/prospects/create-prospect-button'
@@ -22,7 +22,10 @@ import { cn } from '@/lib/utils'
 
 export default function OutreachPage() {
   const router = useRouter()
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const { streamId, loading: streamLoading } = useCurrentStream()
   const [loading, setLoading] = useState(true)
   const [prospects, setProspects] = useState<ProspectWithActivities[]>([])
@@ -67,7 +70,7 @@ export default function OutreachPage() {
 
     // Subscribe to real-time changes
     const subscription = supabase
-      .channel('prospects_changes')
+      .channel('prospects')
       .on(
         'postgres_changes',
         {
@@ -76,19 +79,18 @@ export default function OutreachPage() {
           table: 'prospects',
           filter: `stream_id=eq.${streamId}`
         },
-        (payload) => {
+        (payload: any) => {
           if (payload.eventType === 'INSERT') {
             setProspects(prev => [payload.new as ProspectWithActivities, ...prev])
           } else if (payload.eventType === 'DELETE') {
-            setProspects(prev => prev.filter(p => p.id !== payload.old.id))
+            setProspects(prev => prev.filter((p: ProspectWithActivities) => p.id !== payload.old.id))
           } else if (payload.eventType === 'UPDATE') {
-            setProspects(prev => prev.map(p => p.id === payload.new.id ? payload.new as ProspectWithActivities : p))
+            setProspects(prev => prev.map((p: ProspectWithActivities) => p.id === payload.new.id ? payload.new as ProspectWithActivities : p))
           }
         }
       )
       .subscribe()
 
-    // Clear data and unsubscribe when switching streams
     return () => {
       setProspects([])
       setLoading(true)

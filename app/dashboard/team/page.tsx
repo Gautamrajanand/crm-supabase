@@ -1,14 +1,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
+import { Database } from '@/types/database'
 import TeamClient from './team-client'
 import type { TeamClientProps } from './team-client'
 import { useCurrentStream } from '@/hooks/use-current-stream'
 import type { MemberRole } from './team-client'
 
-type Member = TeamClientProps['members'][0]
+type Member = {
+  id: string
+  email: string
+  role: MemberRole
+  permissions: string
+  created_at: string | null
+  expires_at: string | null
+  status: string
+}
+
 type Invitation = TeamClientProps['invitations'][0]
 
 type StreamInvitation = {
@@ -27,7 +37,10 @@ export default function TeamPage() {
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const { streamId } = useCurrentStream()
 
   useEffect(() => {
@@ -63,36 +76,27 @@ export default function TeamPage() {
           .from('revenue_stream_members')
           .select(`
             id,
-            user_id,
+            user:user_id (id, email),
             role,
-            can_edit,
             created_at,
-            users:auth_users(email, raw_user_meta_data)
+            permissions
           `)
           .eq('stream_id', streamId)
-          .order('created_at')
+          .order('created_at', { ascending: false })
 
         if (membersError) throw membersError
 
-        const members = membersData?.map(m => {
-          const userData = Array.isArray(m.users) ? m.users[0] : m.users
-          return {
-            id: m.id,
-            name: userData?.raw_user_meta_data?.full_name || userData?.email?.split('@')[0] || 'Unknown User',
-            email: userData?.email || '',
-            role: m.role || 'member',
-            created_at: m.created_at,
-            permissions: {
-              outreach: m.can_edit ? 'edit' as const : 'view' as const,
-              deals: m.can_edit ? 'edit' as const : 'view' as const,
-              customers: m.can_edit ? 'edit' as const : 'view' as const,
-              tasks: m.can_edit ? 'edit' as const : 'view' as const,
-              calendar: m.can_edit ? 'edit' as const : 'view' as const
-            }
-          }
-        }) || []
+        const members = (membersData || []).map((member: any) => ({
+          id: member.id,
+          email: member.user.email,
+          role: member.role,
+          permissions: member.permissions,
+          created_at: member.created_at,
+          expires_at: null,
+          status: 'active',
+        })) || []
 
-        setMembers(members)
+        setMembers(members as any)
 
         // Get invitations
         const { data: invitationsData, error: invitationsError } = await supabase
@@ -104,7 +108,7 @@ export default function TeamPage() {
 
         if (invitationsError) throw invitationsError
 
-        const invitations = invitationsData?.map(i => ({
+        const invitations = invitationsData?.map((i) => ({
           id: i.id,
           email: i.email,
           role: (i.access_level as MemberRole) || 'member',
@@ -113,13 +117,13 @@ export default function TeamPage() {
             deals: 'view',
             customers: 'view',
             tasks: 'view',
-            calendar: 'view'
+            calendar: 'view',
           }),
           created_at: i.created_at,
           expires_at: i.expires_at,
-          status: i.status
+          status: i.status,
         })) || []
-        
+
         setInvitations(invitations)
       } catch (error: any) {
         console.error('Error in team page:', error)
@@ -146,5 +150,5 @@ export default function TeamPage() {
     return <div className="flex items-center justify-center h-screen dark:text-gray-100">No stream found</div>
   }
 
-  return <TeamClient workspace={stream} members={members} invitations={invitations} />
+  return <TeamClient workspace={{ ...stream, created_at: new Date().toISOString() }} members={members} invitations={invitations} />
 }

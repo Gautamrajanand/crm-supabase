@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCurrentStream } from '@/hooks/use-current-stream'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -29,7 +30,10 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -39,10 +43,18 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
     setError(null)
 
     try {
+      if (!currentStreamId) {
+        setError('Please select a revenue stream first')
+        return
+      }
+
       // First, create the board
       const { data: board, error: boardError } = await supabase
-        .from('boards')
-        .insert([{ name, type: 'sales', stream_id: currentStreamId }])
+        .from('board')
+        .insert({
+          title: name,
+          stream_id: currentStreamId
+        })
         .select()
         .single()
 
@@ -50,31 +62,21 @@ export function CreateBoardDialog({ onBoardCreated }: CreateBoardDialogProps) {
 
       // Then, create default columns
       const defaultColumns = [
-        { name: 'Lead', position: 0 },
-        { name: 'Contact Made', position: 1 },
-        { name: 'Meeting Scheduled', position: 2 },
-        { name: 'Proposal Sent', position: 3 },
-        { name: 'Negotiation', position: 4 },
-        { name: 'Won', position: 5 },
+        { name: 'New Leads', position: 0 },
+        { name: 'Contacted', position: 1 },
+        { name: 'Meeting Set', position: 2 },
+        { name: 'Proposal', position: 3 },
+        { name: 'Negotiating', position: 4 },
+        { name: 'Closed Won', position: 5 },
       ]
 
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (!currentStreamId) {
-        // toast.error('Please select a revenue stream first')
-        setError('Please select a revenue stream first')
-        return
-      }
-
       const { error: columnsError } = await supabase
-        .from('board_columns')
+        .from('board_column')
         .insert(
           defaultColumns.map(col => ({
             name: col.name,
             position: col.position,
-            board_id: board.id,
-            user_id: user?.id,
-            stream_id: currentStreamId
+            board_id: board.id
           }))
         )
 

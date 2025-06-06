@@ -1,7 +1,8 @@
 'use client'
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { UserPlus, Trash2, X, Copy, Send, Loader2 } from 'lucide-react'
+import { Database } from '@/types/database'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -53,27 +54,33 @@ export type TeamClientProps = {
   workspace: {
     id: string
     name: string
-  }
-  members: Array<{
-    id: string
-    name: string
-    email: string
-    role: MemberRole
     created_at: string
-    permissions: Record<Board, PermissionType>
-  }>
-  invitations: Array<{
+  }
+  members: {
     id: string
     email: string
     role: MemberRole
     permissions: string
-    created_at: string
-    expires_at: string
-  }>
+    created_at: string | null
+    expires_at: string | null
+    status: string
+  }[]
+  invitations: {
+    id: string
+    email: string
+    role: MemberRole
+    permissions: string
+    created_at: string | null
+    expires_at: string | null
+    status: string
+  }[]
 }
 
 export default function TeamClient({ workspace, members: initialMembers, invitations: initialInvitations }: TeamClientProps) {
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   const [isInviteOpen, setIsInviteOpen] = useState(false)
   const [inviteName, setInviteName] = useState('')
@@ -113,10 +120,10 @@ export default function TeamClient({ workspace, members: initialMembers, invitat
 
       const { data: invitation, error } = await supabase
         .rpc('send_stream_invitation', {
-          p_email: inviteEmail,
-          p_stream_id: workspace.id,
-          p_access_level: inviteRole
-        })
+          email: inviteEmail,
+          stream_id: workspace.id,
+          access_level: inviteRole,
+        } as any)
 
       if (error) throw error
 
@@ -124,7 +131,7 @@ export default function TeamClient({ workspace, members: initialMembers, invitat
         throw new Error('Failed to create invitation')
       }
 
-      const { magic_link, invitation_id } = invitation[0]
+      const { magic_link, invitation_id } = invitation[0] as any
       setInviteLink(magic_link)
       
       // Fetch the new invitation to add to the list
@@ -250,13 +257,13 @@ export default function TeamClient({ workspace, members: initialMembers, invitat
                 <div className="flex items-center space-x-4">
                   <Avatar>
                     <AvatarImage
-                      src={`https://api.dicebear.com/7.x/initials/svg?seed=${member.name}`}
-                      alt={member.name}
+                      src={`https://api.dicebear.com/7.x/initials/svg?seed=${member.email}`}
+                      alt={member.email}
                     />
-                    <AvatarFallback className="dark:bg-gray-700 dark:text-gray-100">{member.name[0]}</AvatarFallback>
+                    <AvatarFallback className="dark:bg-gray-700 dark:text-gray-100">{member.email[0]}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="font-medium dark:text-gray-100">{member.name}</div>
+                    <div className="font-medium dark:text-gray-100">{member.email.split('@')[0]}</div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">{member.email}</div>
                   </div>
                 </div>

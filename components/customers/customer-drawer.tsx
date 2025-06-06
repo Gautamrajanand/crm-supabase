@@ -13,7 +13,7 @@ import { format } from "date-fns"
 import { Mail, Phone, MapPin, Building2, CalendarDays, DollarSign, FileText, Activity } from "lucide-react"
 
 import React, { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '@/types/database'
 
 type Deal = Database['public']['Tables']['deals']['Row'] & {
@@ -53,7 +53,10 @@ export default function CustomerDrawer({ customer: initialCustomer, open, onOpen
   const [customer, setCustomer] = useState<Customer>(initialCustomer)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
 
   useEffect(() => {

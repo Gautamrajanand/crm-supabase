@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '@/types/database'
 import { useRouter } from 'next/navigation'
 import { TableCell, TableRow } from '@/components/ui/table'
@@ -41,7 +41,10 @@ export function CustomerRow({ customer }: { customer: Customer }) {
   const [isLoading, setIsLoading] = useState(false)
 
   const router = useRouter()
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {

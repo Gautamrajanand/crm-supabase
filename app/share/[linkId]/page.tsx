@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/database'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
@@ -14,7 +15,10 @@ export default function SharePage({ params }: { params: { linkId: string } }) {
   const [loading, setLoading] = useState(true)
   const [userName, setUserName] = useState('')
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   useEffect(() => {
     checkAccess()
@@ -44,8 +48,8 @@ export default function SharePage({ params }: { params: { linkId: string } }) {
       // Now check the share link
       console.log('Checking share link:', params.linkId)
       const { data: shareLink, error: linkError } = await supabase
-        .from('share_links')
-        .select('stream_id, access_type, expires_at')
+        .from('stream_invitations')
+        .select('stream_id, access_level, expires_at')
         .eq('id', params.linkId)
         .single()
 
@@ -107,8 +111,8 @@ export default function SharePage({ params }: { params: { linkId: string } }) {
 
       console.log('Getting share link details...')
       const { data: shareLink, error: linkError } = await supabase
-        .from('share_links')
-        .select('stream_id, access_type')
+        .from('stream_invitations')
+        .select('stream_id, access_level')
         .eq('id', params.linkId)
         .single()
 
@@ -126,7 +130,7 @@ export default function SharePage({ params }: { params: { linkId: string } }) {
       console.log('Creating user session...')
       
       // Update anonymous user's profile name
-      if (session.user.email === 'anonymous@example.com') {
+      if (session?.user.email === 'anonymous@example.com') {
         const { error: profileError } = await supabase
           .from('profiles')
           .update({ full_name: userName })
@@ -134,41 +138,33 @@ export default function SharePage({ params }: { params: { linkId: string } }) {
 
         if (profileError) {
           console.error('Error updating profile:', profileError)
-          // Continue anyway as this is not critical
+          return {
+            error: 'Failed to update profile'
+          }
         }
       }
 
-      // Create user session
-      const { error: sessionError } = await supabase
-        .from('user_sessions')
-        .insert({
-          stream_id: shareLink.stream_id,
-          user_name: userName,
-          user_email: session.user.email,
-          share_link_id: params.linkId
-        })
-
-      if (sessionError) {
-        console.error('Error creating session:', sessionError)
-        toast.error('Error creating session')
-        return
-      }
-
       console.log('Logging access...')
-      const { error: auditError } = await supabase
-        .from('audit_log')
-        .insert({
-          stream_id: shareLink.stream_id,
-          user_name: userName,
-          user_email: session.user.email,
-          action: 'accessed_stream',
-          details: { access_type: shareLink.access_type }
+      // Only track contribution if we have a valid stream_id
+      if (shareLink.stream_id) {
+        const { error: contributionError } = await supabase.rpc('track_contribution', {
+          p_user_name: userName,
+          p_user_email: session?.user.email || 'anonymous@example.com',
+          p_contribution_type: 'outreach_created',
+          p_entity_id: shareLink.stream_id,
+          p_entity_name: 'stream_invitation',
+          p_details: { access_level: shareLink.access_level }
         })
 
-      if (auditError) {
-        console.error('Error logging access:', auditError)
-        // Don't return, this is not critical
+        if (contributionError) {
+          console.error('Error logging access:', contributionError)
+          return {
+            error: 'Failed to log access'
+          }
+        }
       }
+
+
 
       router.push(`/dashboard?stream=${shareLink.stream_id}`)
     } catch (error) {

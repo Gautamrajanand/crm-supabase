@@ -1,10 +1,13 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '@/types/database'
 import { Invitation, InvitationResponse, InviteFormData } from '@/types/invitation'
 import { toast } from 'sonner'
 
 export class InvitationService {
-  private supabase = createClientComponentClient<Database>()
+  private supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   private mapRoleToAccessLevel(role: string): 'admin' | 'member' | 'viewer' {
     const role_lower = role.toLowerCase()
@@ -85,8 +88,13 @@ export class InvitationService {
         invitationId: invitation.id,
         inviteLink
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating invitation:', error)
+      if (error instanceof Error) {
+        toast.error(error.message)
+      } else {
+        toast.error('An error occurred while creating the invitation')
+      }
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' }
     }
   }

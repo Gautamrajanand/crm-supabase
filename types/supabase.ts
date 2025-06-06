@@ -89,7 +89,27 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      track_contribution: {
+        Args: {
+          p_user_name: string
+          p_user_email: string
+          p_contribution_type: 'deal_created' | 'deal_updated' | 'customer_created' | 'customer_updated' | 'task_created' | 'task_completed' | 'outreach_created' | 'outreach_updated'
+          p_entity_id: string
+          p_entity_name: string
+          p_details?: Json
+        }
+        Returns: {
+          id: string
+          created_at: string
+          user_id: string | null
+          user_name: string
+          user_email: string
+          contribution_type: string
+          entity_id: string
+          entity_name: string
+          details: Json
+        }
+      }
     }
     Enums: {
       [_ in never]: never

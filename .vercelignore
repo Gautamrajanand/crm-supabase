@@ -1,0 +1,12 @@
+.git
+.env
+.env.*
+.next
+node_modules
+README.md
+.gitignore
+.eslintrc.json
+.prettierrc
+.prettierignore
+.vscode
+supabase/
