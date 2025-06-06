@@ -1,6 +1,6 @@
 import { createBrowserClient } from '@supabase/ssr'
-import { Database } from '@/types/database'
-import { Invitation, InvitationResponse, InviteFormData } from '@/types/invitation'
+import { Database } from '../../types/database'
+import { Invitation, InvitationResponse, InviteFormData } from '../../types/invitation'
 import { toast } from 'sonner'
 
 export class InvitationService {

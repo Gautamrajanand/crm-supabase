@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import type { Database } from '@/types/supabase'
-import { STREAM_CHANGE_EVENT } from '@/lib/constants'
+import { createClient } from '../lib/supabase/client'
+import type { Database } from '../types/supabase'
+import { STREAM_CHANGE_EVENT } from '../lib/constants'
 
 const supabase = createClient()
 
