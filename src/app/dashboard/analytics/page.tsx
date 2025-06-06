@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { useCurrentStream } from '@/hooks/use-current-stream'
+import { useCurrentStream } from '../../../hooks/use-current-stream'
 
 type CustomerStats = {
   month: string
