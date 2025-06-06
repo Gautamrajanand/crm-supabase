@@ -5,7 +5,7 @@ interface LogoProps {
   collapsed?: boolean
 }
 
-export function Logo({ className = '', collapsed = false }: LogoProps) {
+function Logo({ className = '', collapsed = false }: LogoProps) {
   return (
     <div className={`flex items-center ${className}`}>
       {/* Logo icon - always visible */}
@@ -34,3 +34,6 @@ export function Logo({ className = '', collapsed = false }: LogoProps) {
     </div>
   )
 }
+
+export { Logo }
+export default Logo
