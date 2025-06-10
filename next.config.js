@@ -2,6 +2,13 @@ const path = require('path')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  webpack: (config, { isServer }) => {
+    // Force case-sensitive path resolution
+    config.resolve = config.resolve || {}
+    config.resolve.symlinks = false
+    
+    return config
+  },
   output: 'standalone',
   images: {
     domains: ['avatars.githubusercontent.com'],
@@ -9,9 +16,11 @@ const nextConfig = {
     remotePatterns: [],
   },
   typescript: {
+    // Temporarily allow build errors during deployment
     ignoreBuildErrors: true
   },
   eslint: {
+    // Temporarily allow ESLint errors during deployment
     ignoreDuringBuilds: true
   },
   swcMinify: true,

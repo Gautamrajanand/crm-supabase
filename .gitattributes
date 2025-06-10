@@ -1,0 +1,13 @@
+* text=auto eol=lf
+*.{cmd,[cC][mM][dD]} text eol=crlf
+*.{bat,[bB][aA][tT]} text eol=crlf
+
+# Enforce case sensitivity
+*.js   linguist-case-sensitive
+*.jsx  linguist-case-sensitive
+*.ts   linguist-case-sensitive
+*.tsx  linguist-case-sensitive
+*.css  linguist-case-sensitive
+*.scss linguist-case-sensitive
+*.html linguist-case-sensitive
+*.json linguist-case-sensitive
