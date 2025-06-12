@@ -1,26 +1,33 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { createBrowserClient } from '@supabase/ssr'
+import { headers } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
 import LandingPage from '@/components/landing/landing-page'
+import { redirect } from 'next/navigation'
 
-export default function HomePage() {
-  const router = useRouter()
-  const supabase = createBrowserClient(
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+export default async function Marketing() {
+  const headersList = headers()
+  
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return headersList.get('cookie')?.split(';').find(c => c.trim().startsWith(`${name}=`))?.split('=')[1]
+        },
+      },
+    }
   )
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        router.replace('/dashboard')
-      }
-    }
-    checkSession()
-  }, [])
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  if (session) {
+    redirect('/dashboard')
+  }
 
   return <LandingPage />
 }
