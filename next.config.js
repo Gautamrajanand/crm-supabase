@@ -21,6 +21,8 @@ const nextConfig = {
     removeConsole: process.env.NODE_ENV === 'production'
   },
   experimental: {},
+  generateStaticParams: false,
+  unstable_includeFiles: ['node_modules/**/*.js'],
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
     config.resolve = config.resolve || {}
     config.resolve.symlinks = false
