@@ -8,7 +8,7 @@ import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
 import { Switch } from "../../../components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
-import supabase from '@/lib/supabase/client'
+import { createBrowserClient } from '@supabase/ssr'
 import { toast } from "sonner"
 import type { Database } from "../../../types/supabase"
 
@@ -26,6 +26,10 @@ type FormData = {
 export default function SettingsPage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
     email: '',
