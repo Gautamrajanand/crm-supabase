@@ -95,7 +95,7 @@ export default function CustomerList({ streamId }: CustomerListProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState<SortableFields>('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-  const { openCustomerDrawer } = useCustomerDrawer()
+  const { openDrawer } = useCustomerDrawer()
 
   const fetchCustomers = useCallback(async () => {
     if (!streamId) return
@@ -193,11 +193,8 @@ export default function CustomerList({ streamId }: CustomerListProps) {
   }
 
   const handleEdit = (e: React.MouseEvent, customer: Customer) => {
-    e.stopPropagation() // Prevent opening the drawer
-    openCustomerDrawer({
-      ...customer,
-      dealValue: customer.deals?.filter((deal: any) => deal.stage === 'closed_won').reduce((sum, deal) => sum + (deal.value || 0), 0) || 0
-    })
+    e.stopPropagation()
+    openDrawer(customer)
   }
 
   const handleSort = useCallback((field: SortableFields) => {
@@ -346,7 +343,7 @@ export default function CustomerList({ streamId }: CustomerListProps) {
                   key={customer.id}
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => {
-                    openCustomerDrawer({
+                    openDrawer({
                       ...customer,
                       dealValue: customer.deals?.filter(deal => deal.stage === 'closed_won').reduce((sum, deal) => sum + (deal.value || 0), 0) || 0,
                       tags: customer.tags || [],

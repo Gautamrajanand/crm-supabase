@@ -156,47 +156,68 @@ interface DealBoardProps {
 }
 
 export function DealBoard({ deals, onDragEnd, onDealUpdate, onDealDelete }: DealBoardProps) {
-  const { openCustomerDrawer } = useCustomerDrawer()
+  const { openDrawer } = useCustomerDrawer()
   const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
   const handleCustomerClick = async (deal: Deal) => {
-    if (!deal.customers) return
+    if (!deal.customer_id) {
+      toast.error('No customer associated with this deal')
+      return
+    }
+
     try {
-      // Fetch the latest customer data including deals
       const { data: customerData, error } = await supabase
         .from('customers')
-        .select('*, deals(*)')
-        .eq('id', deal.customers.id)
+        .select(`
+          *,
+          deals(*)
+        `)
+        .eq('id', deal.customer_id)
         .single()
 
-      if (error) throw error
-
-      if (customerData) {
-        const customer: Customer = {
-          ...customerData,
-          // Preserve existing values
-          company: customerData.company || deal.customers.company,
-          website: customerData.website || deal.customers.website,
-          industry: customerData.industry || deal.customers.industry,
-          annual_revenue: customerData.annual_revenue || deal.customers.annual_revenue,
-          employee_count: customerData.employee_count || deal.customers.employee_count,
-          last_contacted: customerData.last_contacted || deal.customers.last_contacted,
-          notes: customerData.notes || deal.customers.notes,
-          tags: customerData.tags || deal.customers.tags || [],
-          address: customerData.address || deal.customers.address,
-          lifetime_value: customerData.lifetime_value || deal.customers.lifetime_value,
-          status: customerData.status || 'Active',
-          linkedin: customerData.linkedin || deal.customers.linkedin,
-          deals: customerData.deals,
-          dealValue: customerData.deals?.reduce((sum: number, deal: any) => sum + (deal.value || 0), 0) || 0
-        }
-        openCustomerDrawer(customer)
+      if (error) {
+        console.error('Error fetching customer:', error)
+        toast.error('Failed to fetch customer data')
+        return
       }
-    } catch (error) {
-      console.error('Error opening customer drawer:', error)
+
+      if (!customerData) {
+        toast.error('Customer not found')
+        return
+      }
+
+      const customer: Customer = {
+        id: customerData.id,
+        name: customerData.name,
+        email: customerData.email,
+        company: customerData.company,
+        phone: customerData.phone,
+        website: customerData.website || null,
+        industry: customerData.industry || null,
+        annual_revenue: customerData.annual_revenue || null,
+        employee_count: customerData.employee_count || null,
+        last_contacted: customerData.last_contacted || null,
+        notes: customerData.notes || null,
+        tags: customerData.tags || [],
+        address: customerData.address || null,
+        lifetime_value: customerData.lifetime_value || null,
+        status: customerData.status || 'active',
+        linkedin: customerData.linkedin || null,
+        deals: customerData.deals || [],
+        dealValue: customerData.deals?.reduce((sum: number, deal: any) => sum + (deal.value || 0), 0) || 0,
+        dealsCount: customerData.deals?.length || 0,
+        created_at: customerData.created_at,
+        updated_at: customerData.updated_at,
+        stream_id: customerData.stream_id,
+        user_id: customerData.user_id
+      }
+
+      openDrawer(customer)
+    } catch (err) {
+      console.error('Error opening customer drawer:', err)
       toast.error('Failed to open customer drawer')
     }
   }

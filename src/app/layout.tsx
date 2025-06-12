@@ -10,6 +10,8 @@ const plusJakarta = Plus_Jakarta_Sans({
   variable: '--font-plus-jakarta',
 })
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'CRM',
   description: 'CRM built with Next.js and Supabase',

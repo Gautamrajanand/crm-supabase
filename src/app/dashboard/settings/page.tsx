@@ -8,11 +8,11 @@ import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
 import { Switch } from "../../../components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
-import { createClient } from '../../../lib/supabase/client'
+import supabase from '@/lib/supabase/client'
 import { toast } from "sonner"
 import type { Database } from "../../../types/supabase"
 
-const supabase = createClient()
+
 
 type FormData = {
   fullName: string

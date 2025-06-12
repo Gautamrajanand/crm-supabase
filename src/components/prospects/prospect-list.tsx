@@ -6,6 +6,9 @@ import { Database } from '@/types/database'
 type Customer = Database['public']['Tables']['customers']['Row'] & {
   dealValue?: number
   tags?: string[]
+  deals?: any[]
+  dealsCount?: number
+  status: string
 }
 
 type ProspectWithActivities = Database['public']['Tables']['prospects']['Row'] & {
@@ -57,9 +60,9 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
     setProspects(prospects.map(p => p.id === updatedProspect.id ? updatedProspect : p))
     setSelectedProspect(null)
     setIsEditDialogOpen(false)
-    window.location.reload()
+    router.refresh()
   }
-  const { openCustomerDrawer } = useCustomerDrawer()
+  const { openDrawer: openCustomerDrawer } = useCustomerDrawer()
 
   const handleSort = (field: SortableField) => {
     if (field === sortBy) {
@@ -99,12 +102,12 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
 
       if (error) throw error
 
+      const handleUpdate = (updatedProspect: ProspectWithActivities) => {
+        setProspects(prospects.map(p => p.id === updatedProspect.id ? updatedProspect : p))
+      }
+
+      handleUpdate({ ...prospect, status: 'deleted' })
       toast.success('Prospect deleted successfully')
-      
-      // Add a small delay then refresh the page
-      setTimeout(() => {
-        window.location.reload()
-      }, 100)
     } catch (error) {
       console.error('Error deleting prospect:', error)
       toast.error('Failed to delete prospect')
@@ -112,10 +115,12 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
   }
 
   const handleUpdate = (updatedProspect: ProspectWithActivities) => {
-    // Add a small delay then refresh the page
-    setTimeout(() => {
-      window.location.reload()
-    }, 100)
+    // Update the local state
+    setProspects(prospects.map(p => 
+      p.id === updatedProspect.id 
+        ? { ...p, status: 'qualified' } 
+        : p
+    ))
   }
 
   const handleQualify = async (prospect: ProspectWithActivities) => {
@@ -151,11 +156,6 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
         return
       }
 
-      // Add a small delay then refresh the page
-      setTimeout(() => {
-        window.location.reload()
-      }, 100)
-
       // Then create a new customer as a lead
       if (!currentStreamId || typeof currentStreamId !== 'string') {
         toast.error('Please select a revenue stream first');
@@ -176,7 +176,8 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
 
       console.log('Creating customer with data:', customerData)
 
-      const { data: customer, error: customerError } = await supabase
+      // Create the customer
+      const { data: newCustomer, error: customerError } = await supabase
         .from('customers')
         .insert([customerData])
         .select()
@@ -188,17 +189,17 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
         return
       }
 
-      if (!customer) {
+      if (!newCustomer) {
         console.error('No customer data returned')
         toast.error('Failed to create customer: No data returned')
         return
       }
 
-      // Finally create an initial deal
+      // Create an initial deal
       const dealData = {
         title: `${prospect.company} - Initial Contact`,
         stage: 'lead',
-        customer_id: customer.id,
+        customer_id: newCustomer.id,
         user_id: user.id,
         value: prospect.deal_value || 0,
         description: `Qualified from prospect: ${prospect.notes || 'No notes'}`,
@@ -221,9 +222,36 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
         return
       }
 
+      // Fetch the complete customer with deals
+      const { data: customerWithDeals, error: fetchError } = await supabase
+        .from('customers')
+        .select(`
+          *,
+          deals(*)
+        `)
+        .eq('id', newCustomer.id)
+        .single()
+
+      if (fetchError || !customerWithDeals) {
+        console.error('Error fetching customer:', fetchError)
+        toast.error('Failed to open customer drawer')
+        return
+      }
+
+      // Format customer data for drawer
+      const customerForDrawer = {
+        ...customerWithDeals,
+        deals: customerWithDeals.deals || [],
+        dealValue: customerWithDeals.deals?.reduce((sum: number, deal: any) => sum + (deal.value || 0), 0) || 0,
+        dealsCount: customerWithDeals.deals?.length || 0,
+        tags: customerWithDeals.tags || [],
+        status: 'lead'
+      }
+
+      // Open the drawer with complete customer data
+      openCustomerDrawer(customerForDrawer)
+
       toast.success('Prospect qualified successfully')
-      // Navigate to the deals page under dashboard
-      router.push('/dashboard/deals')
       router.refresh()
     } catch (error) {
       console.error('Unexpected error:', error)
@@ -269,13 +297,10 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
                   if (customerData) {
                     const customer = {
                       id: customerData.id,
-                      name: prospect.name || '',
-                      email: prospect.email || '',
-                      phone: prospect.phone || '',
-                      company: customerData.company || prospect.company || '',
-                      status: customerData.status || 'active' as const,
-                      dealValue: 0,
-                      tags: [],
+                      name: customerData.name,
+                      email: customerData.email,
+                      company: customerData.company,
+                      phone: customerData.phone,
                       created_at: customerData.created_at || new Date().toISOString(),
                       updated_at: customerData.updated_at || new Date().toISOString(),
                       stream_id: currentStreamId || '',
@@ -288,7 +313,12 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
                       last_contacted: customerData.last_contacted || null,
                       lifetime_value: customerData.lifetime_value || null,
                       linkedin: customerData.linkedin || null,
-                      notes: customerData.notes || null
+                      notes: customerData.notes || null,
+                      status: 'lead',
+                      deals: [],
+                      dealsCount: 0,
+                      dealValue: 0,
+                      tags: []
                     } satisfies Customer
                     openCustomerDrawer(customer)
                   }

@@ -1,11 +1,13 @@
 'use client'
 
-import { createBrowserClient } from '@supabase/ssr'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
 import React, { useEffect, useState } from 'react'
 import Sidebar from '@/components/sidebar'
 import { Spinner } from '@/components/ui/spinner'
+import { useAuth } from '../auth-provider'
+import { useCustomerDrawer } from '@/context/customer-drawer-context'
+import CustomerDrawer from '@/components/customers/customer-drawer'
 
 type Profile = {
   id: string
@@ -28,29 +30,20 @@ export default function DashboardLayout({
   searchParams: { [key: string]: string | string[] | undefined }
 }) {
   const router = useRouter()
-  const [session, setSession] = useState<{ user: User } | null>(null)
+  const { user, isLoading, supabase } = useAuth()
+  const { isOpen, customer, closeDrawer } = useCustomerDrawer()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [sharedUserName, setSharedUserName] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   useEffect(() => {
-    console.log('Loading session...')
-    setLoading(true)
-
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    
     async function loadSession() {
+      if (!user) return
+      
+      setLoading(true)
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-
-        if (!session) {
-          setLoading(false)
-          return
-        }
-
-        setSession(session)
 
         // Check for stream selection
         const searchParams = new URLSearchParams(window.location.search)
@@ -66,7 +59,7 @@ export default function DashboardLayout({
         }
         
         // Check if this is a shared access session
-        if (urlStreamId && session.user.email === 'anonymous@example.com') {
+        if (urlStreamId && user.email === 'anonymous@example.com') {
           // Get the user name from user_sessions
           const { data: userSession } = await supabase
             .from('user_sessions')
@@ -86,7 +79,7 @@ export default function DashboardLayout({
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('id', user.id)
           .single()
 
         // Get or create user session if accessing via share link
@@ -103,7 +96,7 @@ export default function DashboardLayout({
               .from('user_sessions')
               .update({ last_accessed: new Date().toISOString() })
               .eq('stream_id', urlStreamId)
-              .eq('user_email', session.user.email)
+              .eq('user_email', user.email)
           }
         }
 
@@ -120,16 +113,16 @@ export default function DashboardLayout({
         }
 
         // Set up profile change listener
-        const channel = supabase
+        channel = supabase
           .channel('profile-changes')
           .on('postgres_changes', 
             { 
               event: '*', 
               schema: 'public', 
               table: 'profiles',
-              filter: `id=eq.${session.user.id}` 
+              filter: `id=eq.${user.id}` 
             }, 
-            (payload) => {
+            (payload: { new: Profile }) => {
               console.log('Profile updated:', payload)
               const newProfile = payload.new as Profile
               setProfile(newProfile)
@@ -145,9 +138,7 @@ export default function DashboardLayout({
           )
           .subscribe()
 
-        return () => {
-          channel.unsubscribe()
-        }
+
       } catch (error) {
         console.error('Error loading session:', error)
       } finally {
@@ -157,13 +148,10 @@ export default function DashboardLayout({
 
     loadSession()
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
-
     return () => {
-      subscription.unsubscribe()
+      if (channel) {
+        channel.unsubscribe()
+      }
     }
   }, [])
 
@@ -172,12 +160,12 @@ export default function DashboardLayout({
   }
 
   useEffect(() => {
-    if (!session) {
-      router.push('/login')
+    if (!isLoading && !user) {
+      router.replace('/login')
     }
-  }, [session, router])
+  }, [isLoading, user, router])
 
-  if (loading) {
+  if (isLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Spinner size="lg" />
@@ -185,12 +173,8 @@ export default function DashboardLayout({
     )
   }
 
-  if (!session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Spinner size="lg" />
-      </div>
-    )
+  if (!user) {
+    return null
   }
 
   return (
@@ -206,7 +190,7 @@ export default function DashboardLayout({
           {/* Top Nav */}
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-              Hey {profile?.full_name || sharedUserName || session.user.email?.split('@')[0]} 👋
+              Hey {profile?.full_name || sharedUserName || user.email?.split('@')[0]} 👋
             </h1>
             <button
               onClick={handleSignOut}
@@ -218,6 +202,15 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+
+      {/* Customer Drawer */}
+      {customer && (
+        <CustomerDrawer 
+          customer={customer}
+          open={isOpen}
+          onOpenChange={closeDrawer}
+        />
+      )}
     </div>
   )
 }

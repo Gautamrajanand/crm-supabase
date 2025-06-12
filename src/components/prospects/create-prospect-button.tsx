@@ -112,11 +112,9 @@ export function CreateProspectButton() {
       form.reset()
       setOpen(false)
       
-      // Add a small delay then refresh while preserving the stream
+      // Refresh the page data without a full reload
       setTimeout(() => {
-        const currentUrl = new URL(window.location.href)
-        currentUrl.searchParams.set('stream', streamId)
-        window.location.href = currentUrl.toString()
+        router.refresh()
       }, 100)
     } catch (error) {
       console.error('Unexpected error:', error)

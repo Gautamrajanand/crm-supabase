@@ -1,59 +1,31 @@
 'use client'
 
 import { useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
 import { Database } from '../../types/database';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import Logo from '../../components/logo';
+import { useAuth } from '../auth-provider';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const { user, supabase } = useAuth();
   const [email, setEmail] = useState(searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  
-  useEffect(() => {
-    const init = async () => {
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // If logged in with wrong email, sign out
-      if (session?.user) {
-        const inviteEmail = searchParams.get('email');
-        if (inviteEmail && session.user.email !== inviteEmail) {
-          await supabase.auth.signOut();
-        } else {
-          // If logged in with correct email and next is set, redirect
-          const next = searchParams.get('next');
-          if (next) {
-            window.location.href = next;
-            return;
-          }
-        }
-      }
-      
-      // Clear any existing error messages
-      setError(null);
-      setMessage(null);
-    }
-    
-    init();
-  }, [])
+
+  if (user) {
+    const next = searchParams.get('next') || '/dashboard';
+    router.replace(next);
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setMessage(null);
     setLoading(true);
 
     try {
@@ -71,12 +43,7 @@ export default function LoginPage() {
         return;
       }
 
-      // If next is set, redirect there
-      if (next) {
-        window.location.href = next;
-      } else {
-        window.location.href = '/dashboard';
-      }
+      // Auth context will handle the redirect
     } catch (error: any) {
       console.error('Unexpected error:', error);
       setError(error?.message || 'An unexpected error occurred');

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { createClient } from '../lib/supabase/client'
+import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from '../types/supabase'
+import { useAuth } from '@/app/auth-provider'
 
-const supabase = createClient()
+
 
 type CustomStreamEvent = CustomEvent<string>
 
@@ -17,21 +18,35 @@ type StreamMember = {
 
 export function useCurrentStream() {
   const searchParams = useSearchParams()
+  const { user } = useAuth()
   const [currentStreamId, setCurrentStreamId] = useState<string | null>(
     typeof window !== 'undefined' ? localStorage.getItem('currentStreamId') : null
   )
   const [loading, setLoading] = useState(true)
   const [stream, setStream] = useState<Stream | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const urlStreamId = searchParams.get('stream')
+  
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    }
+  )
 
   // Initial load and URL sync
   useEffect(() => {
     const loadInitialStream = async () => {
       try {
         setLoading(true)
-        const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
           setLoading(false)
+          setError('No authenticated user')
           return
         }
 
@@ -90,6 +105,7 @@ export function useCurrentStream() {
           // No streams available
           setCurrentStreamId(null)
           setStream(null)
+          setError('No revenue streams available')
           localStorage.removeItem('currentStreamId')
           document.cookie = 'currentStreamId=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT'
         }

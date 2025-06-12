@@ -36,10 +36,18 @@ type Deal = {
 export default function DashboardPage() {
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    }
   )
   const { stream, streamId, loading: streamLoading } = useCurrentStream()
 
@@ -72,6 +80,7 @@ export default function DashboardPage() {
       })) || [])
       } catch (error) {
         console.error('Error:', error)
+        setError('Failed to load deals. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -121,11 +130,46 @@ export default function DashboardPage() {
     }
   }, [streamId, streamLoading, router, supabase])
 
-  if (loading) {
+  // Show loading state only when stream is loading
+  if (streamLoading) {
     return (
       <div className="p-6 space-y-6">
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+        </div>
+      </div>
+    )
+  }
+
+  // If no stream is selected, show a message
+  if (!streamId) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              No Revenue Stream Selected
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Please select a revenue stream from the dropdown above to view your dashboard.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-red-600 dark:text-red-400 mb-2">
+              Error Loading Dashboard
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">{error}</p>
+          </div>
         </div>
       </div>
     )

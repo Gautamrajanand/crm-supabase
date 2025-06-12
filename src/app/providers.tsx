@@ -7,11 +7,13 @@ import { CustomerDrawerProvider } from '../context/customer-drawer-context'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <CustomerDrawerProvider>
-        {children}
-        <Toaster richColors position="top-right" />
-      </CustomerDrawerProvider>
-    </AuthProvider>
+    <React.StrictMode>
+      <AuthProvider>
+        <CustomerDrawerProvider>
+          {children}
+          <Toaster richColors position="top-right" />
+        </CustomerDrawerProvider>
+      </AuthProvider>
+    </React.StrictMode>
   )
 }
