@@ -20,9 +20,8 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production'
   },
-  experimental: {
-    serverActions: true
-  },
+  output: 'standalone',
+  distDir: '.next',
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
     config.resolve = config.resolve || {}
     config.resolve.symlinks = false
