@@ -2,8 +2,6 @@ const path = require('path')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
-  trailingSlash: false,
   output: 'standalone',
   images: {
     domains: ['avatars.githubusercontent.com'],
