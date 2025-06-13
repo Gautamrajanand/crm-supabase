@@ -23,5 +23,5 @@ export default async function HomePage() {
     redirect('/dashboard')
   }
 
-  redirect('/auth/sign-in')
+  redirect('/login')
 }
