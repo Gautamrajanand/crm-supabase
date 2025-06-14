@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
 import React, { useEffect, useState } from 'react'
 import Sidebar from '@/components/sidebar'
+// Remove unused imports
 import { Spinner } from '@/components/ui/spinner'
 import { useAuth } from '../auth-provider'
 import { useCustomerDrawer } from '@/context/customer-drawer-context'
@@ -29,6 +30,15 @@ export default function DashboardLayout({
   params: { [key: string]: string }
   searchParams: { [key: string]: string | string[] | undefined }
 }) {
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  // Persist sidebar state in localStorage
+  React.useEffect(() => {
+    const stored = localStorage.getItem('sidebarCollapsed');
+    if (stored) setSidebarCollapsed(stored === 'true');
+  }, []);
+  React.useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', sidebarCollapsed ? 'true' : 'false');
+  }, [sidebarCollapsed]);
   const router = useRouter()
   const { user, isLoading, supabase } = useAuth()
   const { isOpen, customer, closeDrawer } = useCustomerDrawer()
@@ -181,12 +191,15 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="flex h-full">
         {/* Sidebar */}
-        <aside className="fixed inset-y-0 z-50 flex w-72">
-          <Sidebar />
+        <aside className={`fixed inset-y-0 z-50 flex transition-all duration-200 ${sidebarCollapsed ? 'w-20' : 'w-72'}`}>
+          <Sidebar 
+            collapsed={sidebarCollapsed} 
+            onCollapse={setSidebarCollapsed}
+          />
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 w-full py-6 px-4 sm:px-6 lg:px-8 lg:pl-80 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <main className={`flex-1 w-full py-6 px-4 sm:px-6 lg:px-8 transition-all duration-200 min-h-screen bg-gray-50 dark:bg-gray-900 ${sidebarCollapsed ? 'lg:pl-28' : 'lg:pl-80'}`}>
           {/* Top Nav */}
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
