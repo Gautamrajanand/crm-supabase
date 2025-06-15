@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
 import React, { useEffect, useState } from 'react'
 import Sidebar from '@/components/sidebar'
-// Remove unused imports
+import { Menu } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { useAuth } from '../auth-provider'
 import { useCustomerDrawer } from '@/context/customer-drawer-context'
@@ -31,6 +31,36 @@ export default function DashboardLayout({
   searchParams: { [key: string]: string | string[] | undefined }
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const desktopSidebarRef = React.useRef<HTMLDivElement>(null);
+  const mobileSidebarRef = React.useRef<HTMLDivElement>(null);
+
+  // Handle click outside sidebar (mobile only)
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Only handle click outside on mobile
+      if (window.innerWidth < 1024) {
+        const target = event.target as Node;
+        const clickedOutsideMobile = mobileSidebarRef.current && !mobileSidebarRef.current.contains(target);
+        
+        if (clickedOutsideMobile && mobileOpen) {
+          setMobileOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [mobileOpen]);
+
+  // Handle sidebar collapse on mobile
+  const handleSidebarCollapse = (collapsed: boolean) => {
+    setSidebarCollapsed(collapsed);
+    // On mobile, close the sidebar when collapsed
+    if (window.innerWidth < 1024 && collapsed) {
+      setMobileOpen(false);
+    }
+  };
   // Persist sidebar state in localStorage
   React.useEffect(() => {
     const stored = localStorage.getItem('sidebarCollapsed');
@@ -190,11 +220,25 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="flex h-full">
-        {/* Sidebar */}
-        <aside className={`fixed inset-y-0 z-50 flex transition-all duration-200 ${sidebarCollapsed ? 'w-20' : 'w-72'}`}>
+        {/* Desktop Sidebar */}
+        <aside 
+          ref={desktopSidebarRef}
+          className={`fixed inset-y-0 z-50 hidden lg:flex transition-all duration-200 ${sidebarCollapsed ? 'w-20' : 'w-72'}`}
+        >
           <Sidebar 
             collapsed={sidebarCollapsed} 
-            onCollapse={setSidebarCollapsed}
+            onCollapse={handleSidebarCollapse}
+          />
+        </aside>
+
+        {/* Mobile Sidebar */}
+        <aside 
+          ref={mobileSidebarRef}
+          className={`fixed inset-y-0 left-0 z-50 lg:hidden transition-all duration-200 transform h-full ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} ${sidebarCollapsed ? 'w-20' : 'w-72'}`}
+        >
+          <Sidebar 
+            collapsed={sidebarCollapsed} 
+            onCollapse={handleSidebarCollapse}
           />
         </aside>
 
@@ -202,9 +246,18 @@ export default function DashboardLayout({
         <main className={`flex-1 w-full py-6 px-4 sm:px-6 lg:px-8 transition-all duration-200 min-h-screen bg-gray-50 dark:bg-gray-900 ${sidebarCollapsed ? 'lg:pl-28' : 'lg:pl-80'}`}>
           {/* Top Nav */}
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-              Hey {profile?.full_name || sharedUserName || user.email?.split('@')[0]} 👋
-            </h1>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setMobileOpen(true)}
+                className="lg:hidden p-2 -ml-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+                aria-label="Open menu"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                Hey {profile?.full_name || sharedUserName || user.email?.split('@')[0]} 👋
+              </h1>
+            </div>
             <button
               onClick={handleSignOut}
               className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
