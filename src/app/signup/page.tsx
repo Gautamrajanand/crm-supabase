@@ -104,14 +104,14 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-black py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-[400px] space-y-6">
         <div className="flex flex-col items-center space-y-2">
           <Logo />
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
             Create your workspace
           </h1>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-500">
             Get started with your new CRM experience
           </p>
         </div>
@@ -130,7 +130,7 @@ export default function SignUpPage() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Full Name"
-              className="w-full bg-gray-900 border-gray-800 text-white placeholder:text-gray-500"
+              className="w-full bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
             />
 
             <Input
@@ -141,7 +141,7 @@ export default function SignUpPage() {
               value={workspaceName}
               onChange={(e) => setWorkspaceName(e.target.value)}
               placeholder="Workspace Name"
-              className="w-full bg-gray-900 border-gray-800 text-white placeholder:text-gray-500"
+              className="w-full bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
             />
 
             <Input
@@ -153,7 +153,7 @@ export default function SignUpPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              className="w-full bg-gray-900 border-gray-800 text-white placeholder:text-gray-500"
+              className="w-full bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
             />
 
             <Input
@@ -165,14 +165,14 @@ export default function SignUpPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full bg-gray-900 border-gray-800 text-white placeholder:text-gray-500"
+              className="w-full bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
             />
           </div>
 
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white"
           >
             {loading ? (
               <>
@@ -187,7 +187,7 @@ export default function SignUpPage() {
           <div className="text-center text-sm">
             <Link 
               href="/login" 
-              className="text-orange-500 hover:text-orange-400 transition-colors"
+              className="text-orange-600 hover:text-orange-500 transition-colors"
             >
               Already have an account? Sign in
             </Link>

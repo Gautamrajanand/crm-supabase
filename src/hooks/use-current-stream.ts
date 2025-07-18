@@ -50,12 +50,13 @@ export function useCurrentStream() {
           return
         }
 
-        // Try URL stream first
-        if (urlStreamId) {
+        // Try localStorage/cookie stream first
+        const storedId = currentStreamId
+        if (storedId) {
           const { data: streamData, error } = await supabase
             .from('revenue_streams')
             .select('*')
-            .eq('id', urlStreamId)
+            .eq('id', storedId)
             .single()
 
           if (!error && streamData) {
@@ -68,13 +69,12 @@ export function useCurrentStream() {
           }
         }
 
-        // Try localStorage/cookie stream
-        const storedId = currentStreamId
-        if (storedId) {
+        // Try URL stream if no stored stream
+        if (urlStreamId) {
           const { data: streamData, error } = await supabase
             .from('revenue_streams')
             .select('*')
-            .eq('id', storedId)
+            .eq('id', urlStreamId)
             .single()
 
           if (!error && streamData) {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserSupabase } from '@/lib/supabase/client'
 import { useState } from 'react'
 import { User } from '@supabase/auth-helpers-nextjs'
 
@@ -11,7 +11,7 @@ interface UserNavProps {
 
 export function UserNav({ user }: UserNavProps) {
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserSupabase()
   const [isOpen, setIsOpen] = useState(false)
 
   const handleSignOut = async () => {

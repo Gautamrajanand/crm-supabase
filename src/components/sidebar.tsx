@@ -125,11 +125,12 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
         </nav>
       </div>
       <div className="px-4 py-2 border-t border-border space-y-2">
-        {/* Collapse Button */}
+
+        {/* Collapse Button (desktop only) */}
         <button
           onClick={() => onCollapse?.(!collapsed)}
           className={cn(
-            'text-sm group flex px-3 py-2 w-full items-center font-medium cursor-pointer rounded-md transition-colors',
+            'text-sm group hidden lg:flex px-3 py-2 w-full items-center font-medium cursor-pointer rounded-md transition-colors',
             'text-muted-foreground hover:text-foreground hover:bg-accent/50 active:bg-accent',
             collapsed ? 'justify-center' : ''
           )}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserSupabase } from '@/lib/supabase/client'
 import { DealBoard } from './deal-board'
 import { DealFilters } from './deal-filters'
 import { CreateDealButton } from './create-deal-button'
@@ -50,10 +50,7 @@ export function DealsClient({ initialDeals }: DealsClientProps) {
   const [minValue, setMinValue] = useState('')
   const [maxValue, setMaxValue] = useState('')
 
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = createBrowserSupabase()
 
   const stats = useMemo(() => {
     const totalValue = deals.reduce((sum, deal) => sum + (deal.value || 0), 0)

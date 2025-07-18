@@ -17,7 +17,6 @@ import type { Database } from "../../../types/supabase"
 type FormData = {
   fullName: string
   email: string
-  emailNotifications: boolean
   darkMode: boolean
   timezone: string
 }
@@ -33,7 +32,6 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
     email: '',
-    emailNotifications: false,
     darkMode: false,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   })
@@ -55,7 +53,6 @@ export default function SettingsPage() {
           ...prev,
           fullName: profile.full_name || '',
           email: user.email || '',
-          emailNotifications: profile.email_notifications || false,
           darkMode: profile.dark_mode || false,
           timezone: profile.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         }))
@@ -93,7 +90,6 @@ export default function SettingsPage() {
         .upsert({
           id: user.id,
           full_name: formData.fullName,
-          email_notifications: formData.emailNotifications,
           dark_mode: formData.darkMode,
           timezone: formData.timezone
         })
@@ -168,14 +164,6 @@ export default function SettingsPage() {
                         <option value="America/Denver">(UTC-7) Mountain Time</option>
                         <option value="America/Los_Angeles">(UTC-8) Pacific Time</option>
                       </select>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="emailNotifications"
-                        checked={formData.emailNotifications}
-                        onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, emailNotifications: checked }))}
-                      />
-                      <Label htmlFor="emailNotifications" className="dark:text-gray-100">Email Notifications</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Switch

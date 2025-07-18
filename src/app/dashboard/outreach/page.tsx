@@ -48,19 +48,32 @@ export default function OutreachPage() {
 
     async function fetchProspects() {
       try {
+        if (!streamId) {
+          console.log('No stream ID available yet')
+          return
+        }
+
         setLoading(true)
-        const { data: prospects } = await supabase
+        console.log('Fetching prospects for stream:', streamId)
+
+        const { data: prospects, error } = await supabase
           .from('prospects')
           .select(`
             *,
             activities (*)
           `)
-          .eq('stream_id', streamId || '')
+          .eq('stream_id', streamId)
           .order('created_at', { ascending: false })
 
+        if (error) {
+          console.error('Error fetching prospects:', error)
+          return
+        }
+
+        console.log('Fetched prospects:', prospects)
         setProspects((prospects || []) as ProspectWithActivities[])
       } catch (error) {
-        console.error('Error fetching prospects:', error)
+        console.error('Error in fetchProspects:', error)
       } finally {
         setLoading(false)
       }
@@ -68,9 +81,11 @@ export default function OutreachPage() {
 
     fetchProspects()
 
-    // Subscribe to real-time changes
-    const subscription = supabase
-      .channel('prospects')
+    // Create a channel for real-time updates
+    const channel = supabase.channel(`prospects-${streamId}`)
+
+    // Subscribe to prospect changes
+    channel
       .on(
         'postgres_changes',
         {
@@ -79,22 +94,85 @@ export default function OutreachPage() {
           table: 'prospects',
           filter: `stream_id=eq.${streamId}`
         },
-        (payload: any) => {
-          if (payload.eventType === 'INSERT') {
-            setProspects(prev => [payload.new as ProspectWithActivities, ...prev])
-          } else if (payload.eventType === 'DELETE') {
-            setProspects(prev => prev.filter((p: ProspectWithActivities) => p.id !== payload.old.id))
-          } else if (payload.eventType === 'UPDATE') {
-            setProspects(prev => prev.map((p: ProspectWithActivities) => p.id === payload.new.id ? payload.new as ProspectWithActivities : p))
+        async (payload: any) => {
+          try {
+            console.log('Prospect change received:', payload)
+
+            // For inserts and updates, fetch the full prospect with activities
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const { data: prospect, error } = await supabase
+                .from('prospects')
+                .select(`
+                  *,
+                  activities (*)
+                `)
+                .eq('id', payload.new.id)
+                .single()
+
+              if (error) throw error
+
+              if (payload.eventType === 'INSERT') {
+                setProspects(prev => [prospect as ProspectWithActivities, ...prev])
+              } else {
+                setProspects(prev => 
+                  prev.map(p => p.id === prospect.id ? prospect as ProspectWithActivities : p)
+                )
+              }
+            } 
+            // For deletes, just remove from state
+            else if (payload.eventType === 'DELETE') {
+              setProspects(prev => prev.filter(p => p.id !== payload.old.id))
+            }
+          } catch (error) {
+            console.error('Error handling prospect change:', error)
+          }
+        }
+      )
+      // Subscribe to activity changes
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'activities'
+        },
+        async (payload: any) => {
+          try {
+            // Only process if we have the related prospect
+            const prospectId = payload.new?.prospect_id || payload.old?.prospect_id
+            if (!prospectId) return
+
+            const prospect = prospects.find(p => p.id === prospectId)
+            if (!prospect) return
+
+            // Fetch updated activities for the prospect
+            const { data: activities, error } = await supabase
+              .from('activities')
+              .select('*')
+              .eq('prospect_id', prospectId)
+
+            if (error) throw error
+
+            // Update the prospect's activities
+            setProspects(prev => 
+              prev.map(p => 
+                p.id === prospectId 
+                  ? { ...p, activities: activities || [] }
+                  : p
+              )
+            )
+          } catch (error) {
+            console.error('Error handling activity change:', error)
           }
         }
       )
       .subscribe()
 
     return () => {
+      console.log('Cleaning up subscriptions...')
       setProspects([])
       setLoading(true)
-      subscription.unsubscribe()
+      channel.unsubscribe()
     }
   }, [streamId, streamLoading])
 

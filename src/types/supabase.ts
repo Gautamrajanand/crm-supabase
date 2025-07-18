@@ -6,6 +6,21 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export type UserRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER'
+export type UserStatus = 'active' | 'pending'
+
+export type TeamMember = {
+  id: string
+  user_id: string
+  email: string
+  full_name: string
+  role: UserRole
+  status: UserStatus
+  created_at: string
+  updated_at: string
+  joined_at: string | null
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -56,6 +71,87 @@ export interface Database {
           name?: string
           created_at?: string
           updated_at?: string | null
+        }
+      }
+      team_members: {
+        Row: {
+          id: string
+          user_id: string
+          email: string
+          full_name: string
+          role: UserRole
+          created_at: string
+          updated_at: string
+          joined_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          email: string
+          full_name: string
+          role: UserRole
+          created_at?: string
+          updated_at?: string
+          joined_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          email?: string
+          full_name?: string
+          role?: UserRole
+          created_at?: string
+          updated_at?: string
+          joined_at?: string | null
+        }
+      }
+      team_invitations: {
+        Row: {
+          id: string
+          email: string
+          role: UserRole
+          status: UserStatus
+          invited_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          role: UserRole
+          status?: UserStatus
+          invited_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          role?: UserRole
+          status?: UserStatus
+          invited_by?: string
+          created_at?: string
+        }
+      }
+      team_activity: {
+        Row: {
+          id: string
+          user_id: string
+          action: string
+          details: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          action: string
+          details: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          action?: string
+          details?: Json
+          created_at?: string
         }
       }
       revenue_stream_members: {

@@ -1,38 +1,40 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserSupabase } from '@/lib/supabase/client'
 import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { User, Session } from '@supabase/supabase-js'
 
 type AuthContextType = {
   isLoading: boolean;
-  user: any | null;
-  supabase: ReturnType<typeof createBrowserClient>;
+  user: User | null;
+  session: Session | null;
+  supabase: ReturnType<typeof createBrowserSupabase>;
   signOut: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   user: null,
-  supabase: createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  ),
+  session: null,
+  supabase: createBrowserSupabase(),
   signOut: async () => {},
+  signIn: async () => {},
+  signUp: async () => {},
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthContextType['user']>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
   
   // Create Supabase client once
-  const supabase = React.useMemo(() => createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  ), [])
+  const supabase = React.useMemo(() => createBrowserSupabase(), [])
 
   useEffect(() => {
     // Check active sessions and sets the user
@@ -42,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           console.error('Error getting session:', error)
           setUser(null)
+          setSession(null)
           setIsLoading(false)
           return
         }
@@ -73,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('Error in getSession:', error)
         setUser(null)
+        setSession(null)
         setIsLoading(false)
       }
     }
@@ -86,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (event === 'SIGNED_OUT') {
           setUser(null)
+          setSession(null)
           if (pathname !== '/') {
             router.replace('/')
           }
@@ -119,6 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('Error in auth state change:', error)
         setUser(null)
+        setSession(null)
         setIsLoading(false)
         if (pathname.startsWith('/dashboard')) {
           router.replace('/login')
@@ -134,18 +140,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = React.useMemo(() => ({
     isLoading,
     user,
+    session,
     supabase,
     signOut: async () => {
       try {
         await supabase.auth.signOut()
         setUser(null)
+        setSession(null)
         router.replace('/')
       } catch (error) {
         console.error('Error signing out:', error)
         toast.error('Error signing out')
       }
     },
-  }), [isLoading, user, supabase, router])
+    signIn: async (email: string, password: string) => {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (error) throw error
+        setUser(data.user)
+        setSession(data.session)
+        router.replace('/dashboard')
+      } catch (error) {
+        console.error('Error signing in:', error)
+        toast.error('Error signing in')
+        throw error
+      }
+    },
+    signUp: async (email: string, password: string) => {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+        })
+        if (error) throw error
+        setUser(data.user)
+        setSession(data.session)
+        router.replace('/dashboard')
+      } catch (error) {
+        console.error('Error signing up:', error)
+        toast.error('Error signing up')
+        throw error
+      }
+    },
+  }), [isLoading, user, session, supabase, router])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

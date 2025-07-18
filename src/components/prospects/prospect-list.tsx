@@ -42,7 +42,16 @@ const statusColors = {
 type SortableField = keyof Pick<ProspectWithActivities, 'name' | 'company' | 'status' | 'created_at' | 'deal_value'>
 
 export function ProspectList({ prospects: initialProspects }: { prospects: ProspectWithActivities[] }) {
-  if (!initialProspects?.length) return null
+  if (!initialProspects?.length) {
+    return (
+      <div className="py-12 text-center">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No prospects yet</h3>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Get started by adding your first prospect using the "Add Prospect" button above.
+        </p>
+      </div>
+    )
+  }
   const [prospects, setProspects] = useState(initialProspects)
   const [selectedProspect, setSelectedProspect] = useState<ProspectWithActivities | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -159,9 +168,9 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
       // Then create a new customer as a lead
       if (!currentStreamId || typeof currentStreamId !== 'string') {
         toast.error('Please select a revenue stream first');
-        setLoading(false);
         return;
       }
+      
       const streamId = currentStreamId;
       const customerData = {
         name: prospect.name,
@@ -174,9 +183,7 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
         stream_id: streamId
       }
 
-      console.log('Creating customer with data:', customerData)
-
-      // Create the customer
+      // Create the customer and get the ID
       const { data: newCustomer, error: customerError } = await supabase
         .from('customers')
         .insert([customerData])
@@ -199,14 +206,12 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
       const dealData = {
         title: `${prospect.company} - Initial Contact`,
         stage: 'lead',
-        customer_id: newCustomer.id,
-        user_id: user.id,
         value: prospect.deal_value || 0,
         description: `Qualified from prospect: ${prospect.notes || 'No notes'}`,
-        stream_id: streamId
+        user_id: user.id,
+        stream_id: streamId,
+        customer_id: newCustomer.id
       }
-
-      console.log('Creating deal with data:', dealData)
 
       const { error: dealError } = await supabase
         .from('deals')
@@ -214,45 +219,22 @@ export function ProspectList({ prospects: initialProspects }: { prospects: Prosp
 
       if (dealError) {
         console.error('Error creating deal:', dealError)
-        if (dealError.code === '23505') {
-          toast.error('Failed to create deal: Deal already exists')
-        } else {
-          toast.error(`Failed to create deal: ${dealError.message}`)
-        }
+        toast.error(`Failed to create deal: ${dealError.message}`)
         return
       }
 
-      // Fetch the complete customer with deals
-      const { data: customerWithDeals, error: fetchError } = await supabase
-        .from('customers')
-        .select(`
-          *,
-          deals(*)
-        `)
-        .eq('id', newCustomer.id)
-        .single()
-
-      if (fetchError || !customerWithDeals) {
-        console.error('Error fetching customer:', fetchError)
-        toast.error('Failed to open customer drawer')
-        return
-      }
-
-      // Format customer data for drawer
-      const customerForDrawer = {
-        ...customerWithDeals,
-        deals: customerWithDeals.deals || [],
-        dealValue: customerWithDeals.deals?.reduce((sum: number, deal: any) => sum + (deal.value || 0), 0) || 0,
-        dealsCount: customerWithDeals.deals?.length || 0,
-        tags: customerWithDeals.tags || [],
-        status: 'lead'
-      }
-
-      // Open the drawer with complete customer data
-      openCustomerDrawer(customerForDrawer)
+      // Update local state immediately
+      setProspects(prev => prev.map(p => 
+        p.id === prospect.id 
+          ? { ...p, status: 'qualified' }
+          : p
+      ))
 
       toast.success('Prospect qualified successfully')
-      router.refresh()
+      
+      // Add small delay before refresh to ensure toast is visible
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      window.location.reload()
     } catch (error) {
       console.error('Unexpected error:', error)
       toast.error('An unexpected error occurred')

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Copy, RefreshCw, Share2 } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserSupabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
 import {
@@ -36,7 +36,7 @@ export function ShareDialog({ streamId, open, onClose }: ShareDialogProps) {
   const [viewLink, setViewLink] = useState('')
   const [editLink, setEditLink] = useState('')
   const [expiryEnabled, setExpiryEnabled] = useState(false)
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserSupabase()
 
   const generateLink = async (type: 'view' | 'edit') => {
     try {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Database } from '../../types/database';
 import { toast } from 'sonner';
@@ -17,11 +17,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  if (user) {
-    const next = searchParams.get('next') || '/dashboard';
-    router.replace(next);
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      const returnUrl = searchParams.get('returnUrl') || searchParams.get('next') || '/dashboard';
+      router.replace(returnUrl);
+    }
+  }, [user, searchParams, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,16 +54,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-black py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-[400px] space-y-6">
         <div className="flex flex-col items-center space-y-2">
           <Logo />
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
             Welcome back
           </h1>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-500">
             Don't have an account?{' '}
-            <Link href="/signup" className="text-orange-500 hover:text-orange-400 transition-colors">
+            <Link href="/signup" className="text-orange-600 hover:text-orange-500 transition-colors">
               Sign up
             </Link>
           </p>
@@ -75,7 +76,7 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               required
-              className="w-full bg-gray-900 border-gray-800 text-white placeholder:text-gray-500 rounded-md px-3 py-2 border focus:outline-none focus:ring-1 focus:ring-orange-500"
+              className="w-full bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-md px-3 py-2 border focus:outline-none focus:ring-1 focus:ring-orange-500"
               placeholder="Email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -86,7 +87,7 @@ export default function LoginPage() {
               type="password"
               autoComplete="current-password"
               required
-              className="w-full bg-gray-900 border-gray-800 text-white placeholder:text-gray-500 rounded-md px-3 py-2 border focus:outline-none focus:ring-1 focus:ring-orange-500"
+              className="w-full bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-md px-3 py-2 border focus:outline-none focus:ring-1 focus:ring-orange-500"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -106,7 +107,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-md font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-md font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

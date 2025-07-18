@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserSupabase } from '@/lib/supabase/client'
 import { Database } from '@/types/database'
 import { toast } from 'sonner'
 
@@ -24,10 +24,7 @@ export function EditDealDialog({ deal, open, onClose, onUpdate }: EditDealDialog
   const [expectedCloseDate, setExpectedCloseDate] = useState(deal.expected_close_date || '')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = createBrowserSupabase()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

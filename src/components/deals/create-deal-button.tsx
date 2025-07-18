@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useCurrentStream } from '@/hooks/use-current-stream'
 import { useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserSupabase } from '@/lib/supabase/client'
 import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import {
@@ -70,10 +70,7 @@ export function CreateDealButton({ onDealCreated }: CreateDealButtonProps) {
     stream_id: ''
   })
 
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = createBrowserSupabase()
   const router = useRouter()
   const { streamId } = useCurrentStream()
 

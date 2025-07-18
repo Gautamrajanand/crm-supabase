@@ -78,6 +78,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
+    let mounted = true;
     
     async function loadSession() {
       if (!user) return
@@ -122,6 +123,18 @@ export default function DashboardLayout({
           .eq('id', user.id)
           .single()
 
+        if (profile && mounted) {
+          setProfile(profile)
+          // Apply dark mode
+          if (profile.dark_mode) {
+            document.documentElement.classList.add('dark')
+            document.documentElement.style.colorScheme = 'dark'
+          } else {
+            document.documentElement.classList.remove('dark')
+            document.documentElement.style.colorScheme = 'light'
+          }
+        }
+
         // Get or create user session if accessing via share link
         if (urlStreamId) {
           const { data: shareLink } = await supabase
@@ -140,64 +153,55 @@ export default function DashboardLayout({
           }
         }
 
-        if (profile) {
-          setProfile(profile)
-          // Apply dark mode
-          if (profile.dark_mode) {
-            document.documentElement.classList.add('dark')
-            document.documentElement.style.colorScheme = 'dark'
-          } else {
-            document.documentElement.classList.remove('dark')
-            document.documentElement.style.colorScheme = 'light'
-          }
-        }
-
         // Set up profile change listener
-        channel = supabase
-          .channel('profile-changes')
-          .on('postgres_changes', 
-            { 
-              event: '*', 
-              schema: 'public', 
-              table: 'profiles',
-              filter: `id=eq.${user.id}` 
-            }, 
-            (payload: { new: Profile }) => {
-              console.log('Profile updated:', payload)
-              const newProfile = payload.new as Profile
-              setProfile(newProfile)
-              // Apply dark mode
-              if (newProfile.dark_mode) {
-                document.documentElement.classList.add('dark')
-                document.documentElement.style.colorScheme = 'dark'
-              } else {
-                document.documentElement.classList.remove('dark')
-                document.documentElement.style.colorScheme = 'light'
+        if (mounted) {
+          channel = supabase
+            .channel('profile-changes')
+            .on('postgres_changes', 
+              { 
+                event: '*', 
+                schema: 'public', 
+                table: 'profiles',
+                filter: `id=eq.${user.id}` 
+              }, 
+              (payload: { new: Profile }) => {
+                if (!mounted) return;
+                const newProfile = payload.new as Profile
+                setProfile(newProfile)
+                // Apply dark mode
+                if (newProfile.dark_mode) {
+                  document.documentElement.classList.add('dark')
+                  document.documentElement.style.colorScheme = 'dark'
+                } else {
+                  document.documentElement.classList.remove('dark')
+                  document.documentElement.style.colorScheme = 'light'
+                }
               }
-            }
-          )
-          .subscribe()
-
-
+            )
+            .subscribe()
+        }
       } catch (error) {
         console.error('Error loading session:', error)
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
     loadSession()
 
     return () => {
+      mounted = false;
       if (channel) {
         channel.unsubscribe()
       }
     }
-  }, [])
+  }, [user, supabase])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-  }
+  };
 
   useEffect(() => {
     if (!isLoading && !user) {

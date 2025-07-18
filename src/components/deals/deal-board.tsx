@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { DragDropContext, Draggable, DropResult } from '@hello-pangea/dnd'
 import { useCustomerDrawer } from '@/context/customer-drawer-context'
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserSupabase } from '@/lib/supabase/client'
 import { Database } from '@/types/database'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
@@ -25,10 +25,7 @@ interface DealCardProps {
 
 function DealCard({ deal, index, onUpdate, onDelete, onCustomerClick }: DealCardProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = createBrowserSupabase()
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return null
@@ -157,10 +154,7 @@ interface DealBoardProps {
 
 export function DealBoard({ deals, onDragEnd, onDealUpdate, onDealDelete }: DealBoardProps) {
   const { openDrawer } = useCustomerDrawer()
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = createBrowserSupabase()
 
   const handleCustomerClick = async (deal: Deal) => {
     if (!deal.customer_id) {

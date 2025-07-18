@@ -112,10 +112,9 @@ export function CreateProspectButton() {
       form.reset()
       setOpen(false)
       
-      // Refresh the page data without a full reload
-      setTimeout(() => {
-        router.refresh()
-      }, 100)
+      // Add small delay before refresh to ensure toast is visible
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      window.location.reload()
     } catch (error) {
       console.error('Unexpected error:', error)
       toast.error('An unexpected error occurred')

@@ -1,6 +1,6 @@
 'use client'
 
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserSupabase } from '@/lib/supabase/client'
 import { UserPlus, Trash2, X, Copy, Send, Loader2 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { useState } from 'react'
@@ -77,10 +77,7 @@ export type TeamClientProps = {
 }
 
 export default function TeamClient({ workspace, members: initialMembers, invitations: initialInvitations }: TeamClientProps) {
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = createBrowserSupabase()
 
   const [isInviteOpen, setIsInviteOpen] = useState(false)
   const [inviteName, setInviteName] = useState('')

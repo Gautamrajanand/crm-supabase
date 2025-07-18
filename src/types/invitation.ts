@@ -7,10 +7,11 @@ export interface Invitation {
   email: string
   role: string
   token: string
-  stream_id: string
   status: InvitationStatus
+  stream_id: string
   expires_at: string
   created_at: string
+  invited_by: string
 }
 
 export type InvitationResponse = {
@@ -19,6 +20,8 @@ export type InvitationResponse = {
   message?: string
   invitationId?: string
   inviteLink?: string
+  stream_id?: string
+  stream_name?: string
 }
 
 export type InviteFormData = {
