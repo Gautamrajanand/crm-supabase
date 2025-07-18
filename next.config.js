@@ -2,6 +2,10 @@ const path = require('path')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverActions: true
+  },
+  generateBuildId: () => 'build-' + Date.now(),
   output: 'standalone',
   images: {
     domains: ['avatars.githubusercontent.com'],
