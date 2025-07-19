@@ -98,30 +98,39 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
           {!collapsed && <RevenueSwitcher />}
         </div>
         <nav className="space-y-1">
-          {routes.map((route) => (
-            <Link
-              key={route.href}
-              href={route.href}
-              className={cn(
-                'text-sm group flex px-3 py-2 w-full items-center font-medium cursor-pointer rounded-md transition-colors',
-                'hover:bg-accent/50 active:bg-accent',
-                pathname === route.href 
-                  ? 'text-chart-1 bg-accent/50' 
-                  : 'text-muted-foreground hover:text-foreground',
-                collapsed ? 'justify-center' : ''
-              )}
-              title={collapsed ? route.label : undefined}
-            >
+          {routes.map((route) => {
+            // Get the current stream ID from URL
+            const urlParams = new URLSearchParams(window.location.search)
+            const streamId = urlParams.get('stream')
+            
+            // Construct the href with stream ID if present
+            const href = streamId ? `${route.href}?stream=${streamId}` : route.href
+            
+            return (
+              <Link
+                key={route.href}
+                href={href}
+                className={cn(
+                  'text-sm group flex px-3 py-2 w-full items-center font-medium cursor-pointer rounded-md transition-colors',
+                  'hover:bg-accent/50 active:bg-accent',
+                  pathname.startsWith(route.href) 
+                    ? 'text-chart-1 bg-accent/50' 
+                    : 'text-muted-foreground hover:text-foreground',
+                  collapsed ? 'justify-center' : ''
+                )}
+                title={collapsed ? route.label : undefined}
+              >
               <route.icon 
                 className={cn(
                   'h-4 w-4',
                   !collapsed && 'mr-2.5',
-                  pathname === route.href ? route.color : 'text-muted-foreground group-hover:text-foreground'
+                  pathname.startsWith(route.href) ? route.color : 'text-muted-foreground group-hover:text-foreground'
                 )} 
               />
-              {!collapsed && route.label}
-            </Link>
-          ))}
+                {!collapsed && route.label}
+              </Link>
+            )
+          })}
         </nav>
       </div>
       <div className="px-4 py-2 border-t border-border space-y-2">
