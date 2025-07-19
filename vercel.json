@@ -8,6 +8,6 @@
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://zvmpreuzflksnqutpjiw.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bXByZXV6Zmxrc25xdXRwaml3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxODU4MjgsImV4cCI6MjA1ODc2MTgyOH0.BLWvUhX7bFoJ4DTcnlDZ0nq5GOItLCQaPeeOLFAnsv0",
-    "NEXT_PUBLIC_DOMAIN": "crm-supabase-gautamrajanand.vercel.app"
+    "NEXT_PUBLIC_DOMAIN": "crm-supabase-345427578.vercel.app"
   }
 }
