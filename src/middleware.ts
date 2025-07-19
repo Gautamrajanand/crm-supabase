@@ -88,6 +88,8 @@ export async function middleware(request: NextRequest) {
       // If no stream in URL but we have one in cookies, add it to URL
       if (!urlStreamId && currentStreamId) {
         const url = new URL(request.url)
+        // Preserve the original pathname
+        url.pathname = request.nextUrl.pathname
         url.searchParams.set('stream', currentStreamId)
         return NextResponse.redirect(url)
       }
