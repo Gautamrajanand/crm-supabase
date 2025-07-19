@@ -1,3 +1,4 @@
+// Hook for managing current stream selection and navigation
 import { useEffect, useState } from 'react'
 import { useSearchParams, usePathname, useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
