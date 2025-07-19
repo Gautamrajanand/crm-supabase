@@ -2,9 +2,6 @@ const path = require('path')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverActions: true
-  },
   generateBuildId: () => 'build-' + Date.now(),
   output: 'standalone',
   images: {
@@ -24,7 +21,6 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production'
   },
-  output: 'standalone',
   distDir: '.next',
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
     config.resolve = config.resolve || {}
