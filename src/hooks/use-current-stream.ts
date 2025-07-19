@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, usePathname, useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from '../types/supabase'
 import { useAuth } from '@/app/auth-provider'
@@ -18,6 +18,8 @@ type StreamMember = {
 
 export function useCurrentStream() {
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const router = useRouter()
   const { user } = useAuth()
   const [currentStreamId, setCurrentStreamId] = useState<string | null>(
     typeof window !== 'undefined' ? localStorage.getItem('currentStreamId') : null
@@ -64,6 +66,12 @@ export function useCurrentStream() {
             setStream(streamData)
             localStorage.setItem('currentStreamId', streamData.id)
             document.cookie = `currentStreamId=${streamData.id};path=/`
+            
+            // If no stream in URL, add it while preserving pathname
+            if (!urlStreamId) {
+              router.replace(`${pathname}?stream=${streamData.id}`)
+            }
+            
             setLoading(false)
             return
           }
@@ -84,6 +92,11 @@ export function useCurrentStream() {
             document.cookie = `currentStreamId=${streamData.id};path=/`
             setLoading(false)
             return
+          } else {
+            // If URL stream is invalid, redirect to pathname with stored stream
+            if (storedId) {
+              router.replace(`${pathname}?stream=${storedId}`)
+            }
           }
         }
 
@@ -101,6 +114,11 @@ export function useCurrentStream() {
           setStream(firstStream)
           localStorage.setItem('currentStreamId', firstStream.id)
           document.cookie = `currentStreamId=${firstStream.id};path=/`
+          
+          // Ensure stream ID is in URL
+          if (!urlStreamId) {
+            router.replace(`${pathname}?stream=${firstStream.id}`)
+          }
         } else {
           // No streams available
           setCurrentStreamId(null)
@@ -146,6 +164,9 @@ export function useCurrentStream() {
         setStream(streamData)
         localStorage.setItem('currentStreamId', newStreamId)
         document.cookie = `currentStreamId=${newStreamId};path=/`
+        
+        // Update URL with new stream ID while preserving pathname
+        router.replace(`${pathname}?stream=${newStreamId}`)
       } catch (error) {
         console.error('Error handling stream change:', error)
       }
