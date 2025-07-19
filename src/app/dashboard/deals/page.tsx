@@ -5,7 +5,11 @@ import { DealsClient } from '@/components/deals/deals-client'
 
 export const revalidate = 0
 
-export default async function DealsPage() {
+interface PageProps {
+  searchParams: { [key: string]: string | string[] | undefined }
+}
+
+export default async function DealsPage({ searchParams }: PageProps) {
   const supabase = createServerSupabase()
 
   const {
@@ -16,9 +20,10 @@ export default async function DealsPage() {
     redirect('/login')
   }
 
-  const currentStreamId = cookies().get('currentStreamId')?.value
+  // Get stream ID from URL params
+  const streamId = searchParams.stream as string
   
-  if (!currentStreamId) {
+  if (!streamId) {
     redirect('/dashboard/settings')
   }
 
@@ -33,7 +38,7 @@ export default async function DealsPage() {
         company
       )
     `)
-    .eq('stream_id', currentStreamId || '')
+    .eq('stream_id', streamId)
     .order('created_at', { ascending: false })
 
   return <DealsClient initialDeals={deals || []} />
