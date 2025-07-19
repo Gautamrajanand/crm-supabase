@@ -79,7 +79,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
-    // If user is signed in and accessing a dashboard route
+    // Handle stream selection for authenticated dashboard routes
+    // This ensures proper stream context is maintained across navigation
     if (session && request.nextUrl.pathname.startsWith('/dashboard')) {
       const currentStreamId = request.cookies.get('currentStreamId')?.value
       const urlStreamId = request.nextUrl.searchParams.get('stream')
