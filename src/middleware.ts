@@ -79,6 +79,25 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
+    // If user is signed in and accessing a dashboard route
+    if (session && request.nextUrl.pathname.startsWith('/dashboard')) {
+      const currentStreamId = request.cookies.get('currentStreamId')?.value
+      const urlStreamId = request.nextUrl.searchParams.get('stream')
+
+      // If no stream in URL but we have one in cookies, add it to URL
+      if (!urlStreamId && currentStreamId) {
+        const url = new URL(request.url)
+        url.searchParams.set('stream', currentStreamId)
+        return NextResponse.redirect(url)
+      }
+
+      // If no stream selected at all, redirect to settings
+      if (!currentStreamId && !urlStreamId && !request.nextUrl.pathname.startsWith('/dashboard/settings')) {
+        const redirectUrl = new URL('/dashboard/settings', request.url)
+        return NextResponse.redirect(redirectUrl)
+      }
+    }
+
     return response
   } catch (error) {
     console.error('Auth error:', error)
