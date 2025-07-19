@@ -22,12 +22,13 @@ const nextConfig = {
     removeConsole: process.env.NODE_ENV === 'production'
   },
   distDir: '.next',
-  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    config.resolve = config.resolve || {}
-    config.resolve.symlinks = false
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': path.join(__dirname, 'src'),
+  webpack: (config) => {
+    config.resolve = {
+      ...config.resolve,
+      alias: {
+        ...config.resolve.alias,
+        '@': path.resolve(__dirname, './src')
+      }
     }
     return config
   }
