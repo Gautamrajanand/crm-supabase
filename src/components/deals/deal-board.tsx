@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { DragDropContext, Draggable, DropResult } from '@hello-pangea/dnd'
 import { useCustomerDrawer } from '@/context/customer-drawer-context'
-import { createBrowserSupabase } from '@/lib/supabase/client'
+import { createBrowserSupabase } from '@/utils/supabase'
 import { Database } from '@/types/database'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Copy, RefreshCw, Share2 } from 'lucide-react'
-import { createBrowserSupabase } from '@/lib/supabase/client'
+import { createBrowserSupabase } from '@/utils/supabase'
 import { toast } from 'sonner'
 
 import {

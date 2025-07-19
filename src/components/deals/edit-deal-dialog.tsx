@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { createBrowserSupabase } from '@/lib/supabase/client'
+import { createBrowserSupabase } from '@/utils/supabase'
 import { Database } from '@/types/database'
 import { toast } from 'sonner'
 

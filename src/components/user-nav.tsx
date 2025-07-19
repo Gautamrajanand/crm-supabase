@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { createBrowserSupabase } from '@/lib/supabase/client'
+import { createBrowserSupabase } from '@/utils/supabase'
 import { useState } from 'react'
 import { User } from '@supabase/auth-helpers-nextjs'
 

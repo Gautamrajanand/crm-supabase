@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { createBrowserSupabase } from '@/lib/supabase/client'
+import { createBrowserSupabase } from '@/utils/supabase'
 import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { User, Session } from '@supabase/supabase-js'

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { createBrowserSupabase } from '@/lib/supabase/client';
+import { createBrowserSupabase } from '@/utils/supabase';
 import type { Database } from '@/types/supabase';
 import { toast } from '@/components/ui/use-toast';
 

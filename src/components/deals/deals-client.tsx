@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { createBrowserSupabase } from '@/lib/supabase/client'
+import { createBrowserSupabase } from '@/utils/supabase'
 import { DealBoard } from './deal-board'
 import { DealFilters } from './deal-filters'
 import { CreateDealButton } from './create-deal-button'

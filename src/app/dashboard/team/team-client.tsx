@@ -1,6 +1,6 @@
 'use client'
 
-import { createBrowserSupabase } from '@/lib/supabase/client'
+import { createBrowserSupabase } from '@/utils/supabase'
 import { UserPlus, Trash2, X, Copy, Send, Loader2 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { useState } from 'react'

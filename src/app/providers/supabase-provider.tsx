@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Database } from '@/types/supabase';
-import { createBrowserSupabase } from '@/lib/supabase/client';
+import { createBrowserSupabase } from '@/utils/supabase';
 
 type SupabaseContext = {
   supabase: ReturnType<typeof createBrowserSupabase>;

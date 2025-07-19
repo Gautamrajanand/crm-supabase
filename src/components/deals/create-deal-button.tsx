@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useCurrentStream } from '@/hooks/use-current-stream'
 import { useState } from 'react'
-import { createBrowserSupabase } from '@/lib/supabase/client'
+import { createBrowserSupabase } from '@/utils/supabase'
 import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import {
