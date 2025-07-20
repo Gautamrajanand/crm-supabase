@@ -17,14 +17,22 @@ export function createServerSupabase() {
           try {
             cookieStore.set({ name, value, ...options })
           } catch (error) {
-            // Handle cookie errors in development
+            console.error('Error setting cookie:', error)
+            // Fallback to setting without options in development
+            if (process.env.NODE_ENV === 'development') {
+              cookieStore.set({ name, value })
+            }
           }
         },
         remove(name: string, options: any) {
           try {
             cookieStore.delete({ name, ...options })
           } catch (error) {
-            // Handle cookie errors in development
+            console.error('Error removing cookie:', error)
+            // Fallback to removing without options in development
+            if (process.env.NODE_ENV === 'development') {
+              cookieStore.delete({ name })
+            }
           }
         },
       },

@@ -28,18 +28,34 @@ export default async function DealsPage({ searchParams }: PageProps) {
   }
 
   // Get all deals and customers for the current stream
-  const { data: deals } = await supabase
-    .from('deals')
-    .select(`
-      *,
-      customers (
-        id,
-        name,
-        company
-      )
-    `)
-    .eq('stream_id', streamId)
-    .order('created_at', { ascending: false })
+  try {
+    const { data: deals, error } = await supabase
+      .from('deals')
+      .select(`
+        *,
+        customers (
+          id,
+          name,
+          company
+        )
+      `)
+      .eq('stream_id', streamId)
+      .order('created_at', { ascending: false })
 
-  return <DealsClient initialDeals={deals || []} />
+    if (error) {
+      console.error('Error fetching deals:', error)
+      throw new Error('Failed to fetch deals')
+    }
+
+    return <DealsClient initialDeals={deals || []} />
+  } catch (error) {
+    console.error('Error in DealsPage:', error)
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-semibold mb-2">Something went wrong</h1>
+        <p className="text-muted-foreground">Failed to load deals. Please try refreshing the page.</p>
+      </div>
+    )
+  }
+
 }
