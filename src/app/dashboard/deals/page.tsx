@@ -29,6 +29,55 @@ export default async function DealsPage({ searchParams }: PageProps) {
 
   // Get all deals and customers for the current stream
   try {
+    // Check if stream exists
+    const { data: stream, error: streamError } = await supabase
+      .from('revenue_streams')
+      .select('*')
+      .eq('id', streamId)
+      .single()
+
+    if (streamError) {
+      console.error('Error checking stream:', streamError)
+      throw new Error('Failed to check stream')
+    }
+
+    if (!stream) {
+      console.error('Stream not found:', streamId)
+      return (
+        <div className="p-6">
+          <h1 className="text-2xl font-semibold mb-2">Stream Not Found</h1>
+          <p className="text-muted-foreground">The requested stream does not exist.</p>
+        </div>
+      )
+    }
+
+    console.log('Stream found:', stream)
+
+    // Check stream membership
+    const { data: membership, error: membershipError } = await supabase
+      .from('revenue_stream_members')
+      .select('*')
+      .eq('stream_id', streamId)
+      .eq('user_id', session.user.id)
+      .single()
+
+    if (membershipError) {
+      console.error('Error checking stream membership:', membershipError)
+      throw new Error('Failed to check stream membership')
+    }
+
+    if (!membership) {
+      console.error('User is not a member of this stream')
+      return (
+        <div className="p-6">
+          <h1 className="text-2xl font-semibold mb-2">Access Denied</h1>
+          <p className="text-muted-foreground">You don't have access to this stream.</p>
+        </div>
+      )
+    }
+
+    console.log('Stream membership:', membership)
+
     const { data: deals, error } = await supabase
       .from('deals')
       .select(`

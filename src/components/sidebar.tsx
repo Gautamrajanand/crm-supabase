@@ -84,12 +84,21 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
     <div className="space-y-4 py-4 flex flex-col h-full bg-background border-r">
       <div className="px-4 py-2 flex-1">
         <button 
-          onClick={() => {
-            // Get current stream ID from URL
-            const urlParams = new URLSearchParams(window.location.search)
-            const streamId = urlParams.get('stream')
-            const url = streamId ? `/dashboard?stream=${streamId}` : '/dashboard'
-            router.push(url)
+          onClick={async () => {
+            try {
+              // Get current stream ID from URL
+              const urlParams = new URLSearchParams(window.location.search)
+              const streamId = urlParams.get('stream')
+              const url = streamId ? `/dashboard?stream=${streamId}` : '/dashboard'
+              await router.push(url)
+            } catch (error) {
+              console.error('Navigation error:', error)
+              // Use window.location as fallback
+              const urlParams = new URLSearchParams(window.location.search)
+              const streamId = urlParams.get('stream')
+              const url = streamId ? `/dashboard?stream=${streamId}` : '/dashboard'
+              window.location.href = url
+            }
           }}
           className={`flex items-center mb-6 hover:opacity-75 transition-opacity ${collapsed ? 'justify-center' : ''}`}
         >
@@ -119,11 +128,18 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
             return (
               <button
                 key={route.href}
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.preventDefault()
-                  // Construct the URL with stream ID if present
-                  const url = streamId ? `${route.href}?stream=${streamId}` : route.href
-                  router.push(url)
+                  try {
+                    // Construct the URL with stream ID if present
+                    const url = streamId ? `${route.href}?stream=${streamId}` : route.href
+                    await router.push(url)
+                  } catch (error) {
+                    console.error('Navigation error:', error)
+                    // Use window.location as fallback
+                    const url = streamId ? `${route.href}?stream=${streamId}` : route.href
+                    window.location.href = url
+                  }
                 }}
                 className={cn(
                   'text-sm group flex px-3 py-2 w-full items-center font-medium cursor-pointer rounded-md transition-colors',
