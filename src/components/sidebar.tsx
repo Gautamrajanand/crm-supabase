@@ -3,11 +3,14 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils'
-import RevenueSwitcher from './revenue-switcher'
-import { LogOut, LayoutDashboard, Users, DollarSign, CalendarRange, Settings, Bell, CheckCircle } from 'lucide-react'
+import { LayoutDashboard, Users, DollarSign, CalendarRange, Settings, Bell, CheckCircle, LogOut, ChevronLeft, ChevronRight } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/database'
 import { toast } from 'sonner'
+
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import RevenueSwitcher from './revenue-switcher'
 
 const routes = [
   {
@@ -61,110 +64,89 @@ interface SidebarProps {
   onCollapse?: (collapsed: boolean) => void;
 }
 
-interface SidebarProps {
-  collapsed?: boolean
-}
-
-export default function Sidebar({ collapsed = false }: SidebarProps) {
+export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createBrowserClient(
+  const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-      }
-    }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
   return (
     <div className="space-y-4 py-4 flex flex-col h-full bg-background border-r">
       <div className="px-4 py-2 flex-1">
-        <button 
-          onClick={async () => {
-            try {
-              // Get current stream ID from URL
-              const urlParams = new URLSearchParams(window.location.search)
-              const streamId = urlParams.get('stream')
-              const url = streamId ? `/dashboard?stream=${streamId}` : '/dashboard'
-              await router.push(url)
-            } catch (error) {
-              console.error('Navigation error:', error)
-              // Use window.location as fallback
-              const urlParams = new URLSearchParams(window.location.search)
-              const streamId = urlParams.get('stream')
-              const url = streamId ? `/dashboard?stream=${streamId}` : '/dashboard'
-              window.location.href = url
-            }
-          }}
+        <Link 
+          href="/dashboard" 
           className={`flex items-center mb-6 hover:opacity-75 transition-opacity ${collapsed ? 'justify-center' : ''}`}
         >
           <div className="relative h-5 w-5 mr-3">
-            <Image 
-              src="/logo.png" 
-              alt="Logo" 
-              fill 
-              className="object-cover" 
-            />
+            <div className="h-5 w-5 text-foreground">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
+            </div>
           </div>
           {!collapsed && (
-            <h1 className="text-xl font-bold">
+            <h1 className="text-lg font-kimberly tracking-wide">
               Hub<span className="text-chart-3">crm</span>
             </h1>
           )}
-        </button>
+        </Link>
         <div className={`mb-6 ${collapsed ? 'flex justify-center' : ''}`}>
           {!collapsed && <RevenueSwitcher />}
         </div>
-        <nav className="space-y-2">
-          {routes.map((route) => {
-            // Get the current stream ID from URL
-            const urlParams = new URLSearchParams(window.location.search)
-            const streamId = urlParams.get('stream')
-            
-            return (
-              <button
-                key={route.href}
-                onClick={async (e) => {
-                  e.preventDefault()
-                  try {
-                    // Construct the URL with stream ID if present
-                    const url = streamId ? `${route.href}?stream=${streamId}` : route.href
-                    await router.push(url)
-                  } catch (error) {
-                    console.error('Navigation error:', error)
-                    // Use window.location as fallback
-                    const url = streamId ? `${route.href}?stream=${streamId}` : route.href
-                    window.location.href = url
-                  }
-                }}
+        <nav className="space-y-1">
+          {routes.map((route) => (
+            <Link
+              key={route.href}
+              href={route.href}
+              className={cn(
+                'text-sm group flex px-3 py-2 w-full items-center font-medium cursor-pointer rounded-md transition-colors',
+                'hover:bg-accent/50 active:bg-accent',
+                pathname === route.href 
+                  ? 'text-chart-1 bg-accent/50' 
+                  : 'text-muted-foreground hover:text-foreground',
+                collapsed ? 'justify-center' : ''
+              )}
+              title={collapsed ? route.label : undefined}
+            >
+              <route.icon 
                 className={cn(
-                  'text-sm group flex px-3 py-2 w-full items-center font-medium cursor-pointer rounded-md transition-colors',
-                  'hover:bg-accent/50 active:bg-accent',
-                  pathname.startsWith(route.href) 
-                    ? 'text-chart-1 bg-accent/50' 
-                    : 'text-muted-foreground hover:text-foreground',
-                  collapsed ? 'justify-center' : ''
-                )}
-                title={collapsed ? route.label : undefined}
-              >
-                <route.icon 
-                  className={cn(
-                    'h-4 w-4',
-                    !collapsed && 'mr-2.5',
-                    pathname.startsWith(route.href) ? route.color : 'text-muted-foreground group-hover:text-foreground'
-                  )} 
-                />
-                {!collapsed && route.label}
-              </button>
-            )
-          })}
+                  'h-4 w-4',
+                  !collapsed && 'mr-2.5',
+                  pathname === route.href ? route.color : 'text-muted-foreground group-hover:text-foreground'
+                )} 
+              />
+              {!collapsed && route.label}
+            </Link>
+          ))}
         </nav>
       </div>
-      <div className="px-4 py-2">
+      <div className="px-4 py-2 border-t border-border space-y-2">
+
+        {/* Collapse Button (desktop only) */}
+        <button
+          onClick={() => onCollapse?.(!collapsed)}
+          className={cn(
+            'text-sm group hidden lg:flex px-3 py-2 w-full items-center font-medium cursor-pointer rounded-md transition-colors',
+            'text-muted-foreground hover:text-foreground hover:bg-accent/50 active:bg-accent',
+            collapsed ? 'justify-center' : ''
+          )}
+          title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+        >
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+          ) : (
+            <>
+              <ChevronLeft className="h-4 w-4 mr-2.5 text-muted-foreground group-hover:text-foreground" />
+              Collapse
+            </>
+          )}
+        </button>
+
+        {/* Logout Button */}
         <button
           onClick={async () => {
             try {
@@ -181,16 +163,10 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
             'text-muted-foreground hover:text-foreground hover:bg-accent/50 active:bg-accent',
             collapsed ? 'justify-center' : ''
           )}
-          title={collapsed ? 'Sign Out' : undefined}
+          title={collapsed ? 'Logout' : undefined}
         >
-          <LogOut 
-            className={cn(
-              'h-4 w-4',
-              !collapsed && 'mr-2.5',
-              'text-muted-foreground group-hover:text-foreground'
-            )} 
-          />
-          {!collapsed && 'Sign Out'}
+          <LogOut className={cn("h-4 w-4", !collapsed && "mr-2.5", "text-muted-foreground group-hover:text-foreground")} />
+          {!collapsed && 'Logout'}
         </button>
       </div>
     </div>
