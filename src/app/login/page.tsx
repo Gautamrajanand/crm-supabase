@@ -11,7 +11,7 @@ import { useAuth } from '../auth-provider';
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, signIn } = useAuth();
+  const { user, supabase } = useAuth();
   const [email, setEmail] = useState(searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,16 +30,24 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      const next = searchParams.get('next') || '/dashboard';
+
       // Sign in with email and password
-      await signIn(email, password);
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+        return;
+      }
+
       // Auth context will handle the redirect
     } catch (error: any) {
-      console.error('Login error:', error);
-      if (error.status === 429) {
-        setError('Too many login attempts. Please wait a moment and try again.');
-      } else {
-        setError(error?.message || 'An unexpected error occurred');
-      }
+      console.error('Unexpected error:', error);
+      setError(error?.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }

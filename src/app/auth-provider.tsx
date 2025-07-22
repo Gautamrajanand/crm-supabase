@@ -36,18 +36,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Create Supabase client once
   const supabase = React.useMemo(() => createBrowserSupabase(), [])
 
+  // Rate limit handling
+  const [retryCount, setRetryCount] = useState(0)
+  const [lastAttempt, setLastAttempt] = useState(0)
+
+  const handleRateLimit = () => {
+    setRetryCount(prev => prev + 1)
+    setLastAttempt(Date.now())
+    const delay = Math.min(1000 * Math.pow(2, retryCount), 30000) // Max 30s delay
+    return new Promise(resolve => setTimeout(resolve, delay))
+  }
+
   useEffect(() => {
     // Check active sessions and sets the user
     const getSession = async () => {
       try {
+        // Check if we need to wait due to rate limiting
+        const timeSinceLastAttempt = Date.now() - lastAttempt
+        if (timeSinceLastAttempt < 1000) { // Minimum 1s between attempts
+          await new Promise(resolve => setTimeout(resolve, 1000 - timeSinceLastAttempt))
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession()
         if (error) {
+          if (error.status === 429) {
+            await handleRateLimit()
+            return getSession() // Retry with backoff
+          }
           console.error('Error getting session:', error)
           setUser(null)
           setSession(null)
           setIsLoading(false)
           return
         }
+        
+        // Reset retry count on success
+        setRetryCount(0)
 
         // Handle invite flow
         if (pathname.startsWith('/join/')) {
@@ -153,36 +177,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         toast.error('Error signing out')
       }
     },
-    signIn: async (email: string, password: string) => {
+    signIn: async (email: string, password: string): Promise<void> => {
       try {
+        const timeSinceLastAttempt = Date.now() - lastAttempt
+        if (timeSinceLastAttempt < 1000) {
+          await new Promise(resolve => setTimeout(resolve, 1000 - timeSinceLastAttempt))
+        }
+
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
+        
         if (error) {
-          console.error('Error signing in:', error)
           if (error.status === 429) {
-            toast.error('Too many attempts. Please wait a moment.')
-          } else {
-            toast.error(error.message || 'Error signing in')
+            await handleRateLimit()
+            return value.signIn(email, password) // Retry with backoff
           }
           throw error
         }
+
         setUser(data.user)
         setSession(data.session)
         router.replace('/dashboard')
-      } catch (error: any) {
-        // Don't update state on error
+      } catch (error) {
+        console.error('Error signing in:', error)
+        toast.error('Error signing in')
         throw error
       }
     },
-    signUp: async (email: string, password: string) => {
+    signUp: async (email: string, password: string): Promise<void> => {
       try {
+        const timeSinceLastAttempt = Date.now() - lastAttempt
+        if (timeSinceLastAttempt < 1000) {
+          await new Promise(resolve => setTimeout(resolve, 1000 - timeSinceLastAttempt))
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
         })
-        if (error) throw error
+        
+        if (error) {
+          if (error.status === 429) {
+            await handleRateLimit()
+            return value.signUp(email, password) // Retry with backoff
+          }
+          throw error
+        }
+
         setUser(data.user)
         setSession(data.session)
         router.replace('/dashboard')
