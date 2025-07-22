@@ -1,5 +1,4 @@
 import { createServerSupabase } from '@/utils/supabase-server'
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 export default async function HomePage() {
@@ -13,5 +12,6 @@ export default async function HomePage() {
     redirect('/dashboard')
   }
 
-  redirect('/login')
+  // Show landing page for non-authenticated users
+  redirect('/marketing')
 }
