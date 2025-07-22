@@ -11,7 +11,7 @@ import { useAuth } from '../auth-provider';
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, supabase } = useAuth();
+  const { user, signIn } = useAuth();
   const [email, setEmail] = useState(searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,20 +30,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const next = searchParams.get('next') || '/dashboard';
-
-      // Sign in with email and password
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        setError(signInError.message);
-        setLoading(false);
-        return;
-      }
-
+      // Use auth provider's signIn method which includes rate limit handling
+      await signIn(email, password);
       // Auth context will handle the redirect
     } catch (error: any) {
       console.error('Unexpected error:', error);
