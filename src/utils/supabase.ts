@@ -10,11 +10,25 @@ const cookieOptions = {
 }
 
 export function createBrowserSupabase() {
-  return createBrowserClient<Database>(
+  const client = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      cookieOptions
+      cookieOptions,
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce',
+        debug: process.env.NODE_ENV === 'development'
+      },
+      global: {
+        headers: {
+          'x-client-info': 'crm-supabase'
+        }
+      }
     }
   )
+
+  return client
 }

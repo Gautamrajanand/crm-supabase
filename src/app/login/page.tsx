@@ -39,7 +39,12 @@ export default function LoginPage() {
       });
 
       if (signInError) {
-        setError(signInError.message);
+        if (signInError.status === 429) {
+          setError('Too many login attempts. Please wait a moment and try again.');
+          toast.error('Rate limit reached. Please wait before trying again.');
+        } else {
+          setError(signInError.message);
+        }
         setLoading(false);
         return;
       }
