@@ -159,13 +159,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email,
           password,
         })
-        if (error) throw error
+        if (error) {
+          console.error('Error signing in:', error)
+          if (error.status === 429) {
+            toast.error('Too many attempts. Please wait a moment.')
+          } else {
+            toast.error(error.message || 'Error signing in')
+          }
+          throw error
+        }
         setUser(data.user)
         setSession(data.session)
         router.replace('/dashboard')
-      } catch (error) {
-        console.error('Error signing in:', error)
-        toast.error('Error signing in')
+      } catch (error: any) {
+        // Don't update state on error
         throw error
       }
     },
