@@ -87,7 +87,8 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
 
   // Set up realtime subscription when currentStreamId changes
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let mounted = true;
+    let currentChannel: ReturnType<typeof supabase.channel> | null = null;
 
     const setupSubscription = async () => {
       // Get current stream ID from cookie
@@ -96,44 +97,61 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
         .find(row => row.startsWith('currentStreamId='))
         ?.split('=')[1]
 
-      if (!currentStreamId) return
+      if (!currentStreamId || !mounted) return
 
       // Clean up existing subscription if any
-      if (channel) {
-        await channel.unsubscribe()
+      if (currentChannel) {
+        try {
+          await currentChannel.unsubscribe()
+        } catch (error) {
+          console.error('Error unsubscribing from existing channel:', error)
+        }
+        currentChannel = null
       }
 
-      const channelId = `stream_preferences_${currentStreamId}`
-      channel = supabase
-        .channel(channelId)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'stream_preferences',
-            filter: `stream_id=eq.${currentStreamId}`,
-          },
-          () => {
-            loadCustomLabels()
-          }
-        )
-
+      // Create a unique channel ID for this component instance
+      const channelId = `stream_preferences_${currentStreamId}_${Math.random().toString(36).substring(2, 9)}`
+      
       try {
-        await channel.subscribe()
+        // Create and subscribe to new channel
+        currentChannel = supabase
+          .channel(channelId)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'stream_preferences',
+              filter: `stream_id=eq.${currentStreamId}`,
+            },
+            () => {
+              if (mounted) {
+                loadCustomLabels()
+              }
+            }
+          )
+
+        await currentChannel.subscribe()
       } catch (error) {
         console.error('Error subscribing to channel:', error)
+        currentChannel = null
       }
     }
 
     setupSubscription()
 
     return () => {
-      if (channel) {
-        channel.unsubscribe()
+      mounted = false
+      if (currentChannel) {
+        try {
+          currentChannel.unsubscribe()
+        } catch (error) {
+          console.error('Error unsubscribing from channel:', error)
+        }
+        currentChannel = null
       }
     }
-  }, [])
+  }, [supabase])
 
   const loadCustomLabels = async () => {
     try {
@@ -143,34 +161,71 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
         .find(row => row.startsWith('currentStreamId='))
         ?.split('=')[1]
 
-      if (!currentStreamId) {
+      // Handle undefined or invalid stream ID
+      if (!currentStreamId || currentStreamId === 'undefined' || currentStreamId === 'null') {
+        console.log('No valid stream ID found, using default labels')
+        setRoutes(defaultRoutes)
         setLoading(false)
         return
       }
 
-      // Load stream preferences
-      const { data: streamPrefs, error: streamError } = await supabase
-        .rpc('get_stream_preferences', { p_stream_id: currentStreamId })
+      // Check if the RPC function exists before calling it
+      try {
+        // Validate UUID format before making the call
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        if (!uuidRegex.test(currentStreamId)) {
+          console.warn(`Invalid UUID format for stream ID: ${currentStreamId}, using defaults`)
+          setRoutes(defaultRoutes)
+          setLoading(false)
+          return
+        }
 
-      if (streamError) {
-        console.error('Error loading stream preferences:', streamError)
-        toast.error('Failed to load custom labels')
-        setLoading(false)
-        return
+        // Load stream preferences
+        const { data: streamPrefs, error: streamError } = await supabase
+          .rpc('get_stream_preferences', { p_stream_id: currentStreamId })
+
+        if (streamError) {
+          // If there's an error but it's not a critical one (like function not found for new users),
+          // just use default labels without showing an error toast
+          if (streamError.code === '42883' || 
+              streamError.message?.includes('function') || 
+              streamError.message?.includes('does not exist') ||
+              streamError.message?.includes('invalid input syntax')) {
+            console.warn('Stream preferences function not available or invalid input, using defaults')
+          } else {
+            console.error('Error loading stream preferences:', streamError)
+            // Don't show toast errors for new users
+            // toast.error('Failed to load custom labels')
+          }
+          
+          // Use defaults
+          setRoutes(defaultRoutes)
+          setLoading(false)
+          return
+        }
+
+        // Use stream preferences or empty object as fallback
+        const labels = streamPrefs || {}
+        setCustomLabels(labels)
+        
+        // Update routes with custom labels
+        setRoutes(defaultRoutes.map(route => ({
+          ...route,
+          label: labels[route.href] || route.label
+        })))
+      } catch (innerError) {
+        // For any other error, just use defaults without showing an error
+        console.warn('Error accessing stream preferences, using defaults:', innerError)
+        setRoutes(defaultRoutes)
       }
-
-      // Use stream preferences or empty object as fallback
-      const labels = streamPrefs || {}
-      setCustomLabels(labels)
-      
-      // Update routes with custom labels
-      setRoutes(defaultRoutes.map(route => ({
-        ...route,
-        label: labels[route.href] || route.label
-      })))
     } catch (error) {
       console.error('Error loading custom labels:', error)
-      toast.error('Failed to load custom labels')
+      // Never show error toasts for label loading - just use defaults silently
+      // if (error instanceof Error && !error.message.includes('function') && !error.message.includes('does not exist')) {
+      //   toast.error('Failed to load custom labels')
+      // }
+      // Use defaults
+      setRoutes(defaultRoutes)
     } finally {
       setLoading(false)
     }
@@ -252,6 +307,24 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
             <div key={route.href} className="group relative">
               <Link
                 href={route.href}
+                data-sidebar={route.href === '/' ? 'overview' : 
+                           route.href === '/dashboard' ? 'overview' : 
+                           route.href === '/dashboard/outreach' ? 'prospects' : 
+                           route.href === '/dashboard/deals' ? 'leads' : 
+                           route.href === '/dashboard/customers' ? 'customers' : 
+                           route.href === '/dashboard/tasks' ? 'tasks' : 
+                           route.href === '/dashboard/calendar' ? 'calendar' : 
+                           route.href === '/dashboard/settings' ? 'settings' : 
+                           route.label.toLowerCase()}
+                data-tour={route.href === '/' ? 'overview' : 
+                           route.href === '/dashboard' ? 'overview' : 
+                           route.href === '/dashboard/outreach' ? 'outreach' : 
+                           route.href === '/dashboard/deals' ? 'deals' : 
+                           route.href === '/dashboard/customers' ? 'customers' : 
+                           route.href === '/dashboard/tasks' ? 'tasks' : 
+                           route.href === '/dashboard/calendar' ? 'calendar' : 
+                           route.href === '/dashboard/settings' ? 'settings' : 
+                           route.label.toLowerCase()}
                 className={cn(
                   'text-sm group flex px-3 py-2 w-full items-center font-medium cursor-pointer rounded-md transition-colors',
                   'hover:bg-accent/50 active:bg-accent',

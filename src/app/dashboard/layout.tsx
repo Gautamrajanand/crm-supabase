@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import React, { useEffect, useState } from 'react'
 import Sidebar from '@/components/sidebar'
 import { Menu } from 'lucide-react'
@@ -9,6 +10,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useAuth } from '../auth-provider'
 import { useCustomerDrawer } from '@/context/customer-drawer-context'
 import CustomerDrawer from '@/components/customers/customer-drawer'
+import { useOnboardingTour } from '@/components/onboarding/use-onboarding-tour'
 
 type Profile = {
   id: string
@@ -75,9 +77,89 @@ export default function DashboardLayout({
   const [profile, setProfile] = useState<Profile | null>(null)
   const [sharedUserName, setSharedUserName] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const { startTour } = useOnboardingTour()
+
+  // Start onboarding tour for new users
+  useEffect(() => {
+    // Check if this is a new user based on profile creation time
+    const checkNewUserAndStartTour = async () => {
+      if (!user) {
+        console.log('User not available yet, skipping tour check')
+        return
+      }
+      
+      console.log('Checking if user should see onboarding tour:', user.email)
+      
+      try {
+        // Get the user's profile
+        const { data: userProfile, error } = await supabase
+          .from('profiles')
+          .select('created_at, email')
+          .eq('id', user.id)
+          .single()
+        
+        if (error) {
+          console.error('Error fetching user profile:', error)
+          return
+        }
+        
+        // Calculate how long ago the profile was created
+        if (userProfile) {
+          const profileCreatedAt = new Date(userProfile.created_at)
+          const now = new Date()
+          const minutesSinceCreation = (now.getTime() - profileCreatedAt.getTime()) / (1000 * 60)
+          
+          console.log('Profile created minutes ago:', minutesSinceCreation)
+          console.log('Loading states:', { loading, isLoading })
+          
+          // Generate a unique key for this specific user
+          const userTourKey = `hasSeenTour_${user.id}`
+          
+          // Check localStorage for tour status with user-specific key
+          const hasSeenTour = localStorage.getItem(userTourKey)
+          console.log('Has seen tour:', hasSeenTour, 'for key:', userTourKey)
+          
+          // Reset the tour for testing if needed
+          // localStorage.removeItem(userTourKey)
+          
+          // If profile was created less than 10 minutes ago and tour hasn't been seen, show the tour
+          // Also ensure we're not in a loading state
+          if ((!hasSeenTour || hasSeenTour !== 'true') && minutesSinceCreation < 10 && !loading && !isLoading) {
+            console.log('Starting tour for new user - conditions met!')
+            
+            // Longer delay to ensure dashboard and sidebar are fully loaded
+            setTimeout(() => {
+              console.log('Executing startTour() after delay')
+              startTour()
+              // Only mark as seen after successful tour start
+              localStorage.setItem(userTourKey, 'true')
+            }, 3000)
+          } else {
+            console.log('Tour conditions not met:', {
+              hasSeenTour,
+              minutesSinceCreation,
+              loading,
+              isLoading
+            })
+          }
+        } else {
+          console.log('No user profile found')
+        }
+      } catch (error) {
+        console.error('Error checking new user status:', error)
+      }
+    }
+    
+    // Add a delay to ensure all components are mounted
+    const timer = setTimeout(() => {
+      checkNewUserAndStartTour()
+    }, 1500)
+    
+    return () => clearTimeout(timer)
+  }, [user, loading, isLoading, supabase, startTour])
 
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let channel: RealtimeChannel | null = null;
     let mounted = true;
     
     async function loadSession() {
@@ -157,14 +239,15 @@ export default function DashboardLayout({
         if (mounted) {
           channel = supabase
             .channel('profile-changes')
-            .on('postgres_changes', 
+            .on(
+              'postgres_changes',
               { 
-                event: '*', 
+                event: '*' as const, 
                 schema: 'public', 
                 table: 'profiles',
                 filter: `id=eq.${user.id}` 
               }, 
-              (payload: { new: Profile }) => {
+              (payload: RealtimePostgresChangesPayload<{ new: Profile }>) => {
                 if (!mounted) return;
                 const newProfile = payload.new as Profile
                 setProfile(newProfile)
